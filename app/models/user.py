@@ -43,5 +43,6 @@ class UserRepository:
         if not row:
             return False
 
-        salt = bytes.fromhex(row["salt"])
+        salt_raw = row["salt"]
+        salt = salt_raw if isinstance(salt_raw, bytes) else bytes.fromhex(salt_raw)
         return _hash_password(password,salt)==row["password_hash"]

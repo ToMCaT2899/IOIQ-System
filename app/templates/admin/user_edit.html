@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_add %}新增用户{% else %}编辑用户{% end %}{% end %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{% if is_add %}<i class="fas fa-plus me-2" style="color:#22c55e;"></i>新增用户{% else %}<i class="fas fa-edit me-2" style="color:#4a6cf7;"></i>编辑用户{% end %}</h2>
+    <p>{% if is_add %}创建新用户账号{% else %}修改用户信息{% end %}</p>
+</div>
+
+<div style="max-width:600px;">
+    <form method="post" action="{% if is_add %}/admin/user/add{% else %}/admin/user/edit?id={{ user['id'] }}{% end %}" style="background:#fff; border-radius:10px; padding:28px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <input type="hidden" name="id" value="{% if user %}{{ user['id'] }}{% end %}">
+        <div style="margin-bottom:18px;">
+            <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px;">用户名 <span style="color:#ef4444;">*</span></label>
+            <input type="text" name="username" value="{% if user %}{{ user['username'] }}{% end %}"
+                   {% if user and user["username"]=="admin" %}readonly style="background:#f8fafc;"{% end %}
+                   required placeholder="请输入用户名"
+                   style="width:100%; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:14px; outline:none;">
+        </div>
+        <div style="margin-bottom:18px;">
+            <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px;">
+                密码 {% if not is_add %}(留空则不修改){% else %}<span style="color:#ef4444;">*</span>{% end %}
+            </label>
+            <input type="password" name="{% if is_add %}password{% else %}new_password{% end %}"
+                   {% if is_add %}required{% end %}
+                   placeholder="{% if is_add %}请输入密码{% else %}不修改请留空{% end %}"
+                   style="width:100%; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:14px; outline:none;">
+        </div>
+        <div style="margin-bottom:24px;">
+            <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px;">分配角色</label>
+            <select name="role_id" style="width:100%; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:14px; outline:none; background:#fff;">
+                <option value="">-- 不分配 --</option>
+                {% for r in roles %}
+                <option value="{{ r['id'] }}"{% if user and user["role_id"]==r["id"] %} selected{% end %}>
+                    {{ r["name"] }}
+                    {% if r["is_system"]==1 %}[系统]{% end %}
+                </option>
+                {% end %}
+            </select>
+        </div>
+        <div style="display:flex; gap:12px;">
+            <button type="submit" style="flex:1; padding:11px; border:none; border-radius:8px; background:linear-gradient(135deg,#4a6cf7,#6366f1); color:#fff; font-size:15px; font-weight:600; cursor:pointer;">
+                {% if is_add %}<i class="fas fa-plus me-1"></i> 新增{% else %}<i class="fas fa-save me-1"></i> 保存{% end %}
+            </button>
+            <a href="/admin/users" style="padding:11px 28px; border:1.5px solid #e2e8f0; border-radius:8px; color:#64748b; font-size:15px; text-decoration:none; line-height:1;">取消</a>
+        </div>
+    </form>
+</div>
+{% end %}

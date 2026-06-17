@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_add %}新增功能{% else %}编辑功能{% end %}{% end %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{% if is_add %}<i class="fas fa-plus me-2" style="color:#22c55e;"></i>新增功能{% else %}<i class="fas fa-edit me-2" style="color:#4a6cf7;"></i>编辑功能{% end %}</h2>
+    <p>{% if is_add %}添加新的系统功能/菜单项{% else %}修改功能信息{% end %}</p>
+</div>
+
+<div style="max-width:700px;">
+    <form method="post" action="{% if is_add %}/admin/function/add{% else %}/admin/function/edit?id={{ func['id'] }}{% end %}" style="background:#fff; border-radius:10px; padding:28px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <input type="hidden" name="id" value="{% if func %}{{ func['id'] }}{% end %}">
+        <div style="margin-bottom:18px;">
+            <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px;">上级菜单</label>
+            <select name="parent_id" style="width:100%; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:14px; outline:none; background:#fff;">
+                <option value="0">顶级菜单（无上级）</option>
+                {% for f in all_funcs %}
+                    {% if f["parent_id"] == 0 %}
+                    <option value="{{ f['id'] }}"{% if func and func["parent_id"]==f["id"] %} selected{% end %}>{{ f["name"] }}</option>
+                    {% end %}
+                {% end %}
+            </select>
+        </div>
+        <div style="margin-bottom:18px;">
+            <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px;">功能名称 <span style="color:#ef4444;">*</span></label>
+            <input type="text" name="name" value="{% if func %}{{ func['name'] }}{% end %}" required placeholder="请输入功能名称" style="width:100%; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:14px; outline:none;">
+        </div>
+        <div style="margin-bottom:18px;">
+            <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px;">功能编码 <span style="color:#ef4444;">*</span></label>
+            <input type="text" name="code" value="{% if func %}{{ func['code'] }}{% end %}" required placeholder="唯一标识，如 dashboard" style="width:100%; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:14px; outline:none;">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+            <div>
+                <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px;">图标 (Font Awesome)</label>
+                <input type="text" name="icon" value="{% if func %}{{ func['icon'] }}{% end %}" placeholder="如 fas fa-home" style="width:100%; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:14px; outline:none;">
+            </div>
+            <div>
+                <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px;">路径</label>
+                <input type="text" name="path" value="{% if func %}{{ func['path'] }}{% end %}" placeholder="如 /admin/index 或 #" style="width:100%; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:14px; outline:none;">
+            </div>
+        </div>
+        <div style="margin-bottom:24px;">
+            <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px;">排序</label>
+            <input type="number" name="sort_order" value="{% if func %}{{ func['sort_order'] }}{% else %}0{% end %}" min="0" style="width:100%; max-width:200px; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; gap:12px;">
+            <button type="submit" style="flex:1; padding:11px; border:none; border-radius:8px; background:linear-gradient(135deg,#4a6cf7,#6366f1); color:#fff; font-size:15px; font-weight:600; cursor:pointer;">
+                {% if is_add %}<i class="fas fa-plus me-1"></i> 新增{% else %}<i class="fas fa-save me-1"></i> 保存{% end %}
+            </button>
+            <a href="/admin/functions" style="padding:11px 28px; border:1.5px solid #e2e8f0; border-radius:8px; color:#64748b; font-size:15px; text-decoration:none; line-height:1;">取消</a>
+        </div>
+    </form>
+</div>
+{% end %}

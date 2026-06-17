@@ -43,33 +43,49 @@ IOIQ-System/
 │  ├─ __init__.py          # 标识 app 为 Python 包
 │  ├─ controllers/         # 控制层（C）- 处理请求与路由逻辑
 │  │  ├─ __init__.py       # 控制器包标识
+│  │  ├─ admin_auth.py     # 后台认证控制器（登录/登出/主页）
+│  │  ├─ admin_manage.py   # 后台管理控制器（功能/角色/用户 CRUD）
 │  │  ├─ base.py           # 基础控制器（预留）
 │  │  ├─ home.py           # 首页控制器（预留）
 │  │  └─ auth.py           # 认证控制器（预留）
 │  ├─ models/              # 模型层（M）- 数据与业务逻辑
 │  │  ├─ __init__.py       # 模型包标识
-│  │  ├─ db.py             # 数据库连接管理 & 表初始化（SQLite3）
-│  │  └─ user.py           # 用户仓储类（CRUD、密码哈希验证）
+│  │  ├─ db.py             # 数据库连接管理 & 表初始化 & 种子数据（SQLite3，4张表）
+│  │  ├─ user.py           # 用户仓储类（CRUD、密码哈希验证）
+│  │  ├─ role.py           # 角色仓储类（CRUD、分页、功能权限分配）
+│  │  └─ function.py       # 功能/菜单仓储类（CRUD、分页、树形结构）
 │  ├─ templates/           # 视图层（V）- HTML 模板
-│  │  ├─ admin/            # 后台管理页面（预留）
-│  │  └─ web/              # 前台用户页面
+│  │  ├─ admin/            # 后台管理页面
+│  │  │  ├─ base.html      # 后台基础布局模板（ZUI 上/左/右布局）
+│  │  │  ├─ index.html     # 后台控制台首页
+│  │  │  ├─ login.html     # 后台登录页（响应式+沉浸式+居中面板）
+│  │  │  ├─ func_list.html # 功能管理列表页
+│  │  │  ├─ func_edit.html # 功能新增/编辑页
+│  │  │  ├─ role_list.html # 角色管理列表页
+│  │  │  ├─ role_edit.html # 角色编辑页（含二级联动功能权限树）
+│  │  │  ├─ user_list.html # 用户管理列表页
+│  │  │  └─ user_edit.html # 用户新增/编辑页
+│  │  └─ web/              # 前台用户页面（预留）
 │  │     ├─ base.html      # 基础模板（预留）
 │  │     ├─ index.html     # 首页（预留）
 │  │     └─ login.html     # 登录页（预留）
-│  ├─ static/              # 静态资源
-│  │  ├─ css/
-│  │  │  └─ base.css       # 基础样式（预留）
-│  │  └─ js/
-│  │     └─ base.js        # 基础脚本（预留）
+│  └─ static/              # 静态资源
+│     ├─ css/
+│     │  └─ base.css       # 基础样式（预留）
+│     ├─ js/
+│     │  └─ base.js        # 基础脚本（预留）
+│     ├─ zui/              # ZUI 3 组件库（已解压）
+│     ├─ bootstrap-5.3.8-dist/  # Bootstrap 5.3.8（已解压）
+│     └─ fontawesome-free-6.4.0-web/  # Font Awesome 6.4.0（已解压）
 ├─ database/
-│  └─ app.db               # SQLite 数据库文件（运行时生成）
-├─ dist/                   # 第三方前端组件压缩包
+│  └─ app.db               # SQLite 数据库文件（运行时自动生成）
+├─ dist/                   # 第三方前端组件压缩包（源文件）
 │  ├─ bootstrap-5.3.8-dist.zip
 │  ├─ fontawesome-free-6.4.0-web.zip
 │  └─ zui-3.0.0.zip
 ├─ docs/                   # 开发文档与提示词工程目录
-│  ├─ basePrompt.md        # 本项目说明（本文件）
-│  ├─ codingPrompt.md      # 编码相关提示词
+│  ├─ basePrompt.md        # 本项目说明（本文件，AI 维护）
+│  ├─ codingPrompt.md      # 编码相关提示词（人类维护）
 │  ├─ requirementPrompt.md # 需求相关提示词
 │  └─ treePromot.md        # 项目目录结构提示词
 ├─ test/                   # 单元测试脚本目录
@@ -83,20 +99,55 @@ IOIQ-System/
 
 ### MVC 分层
 - **Model（模型层）** — `app/models/`
-  - `db.py`：封装 SQLite3 连接池、数据库初始化（`init_db` 创建 users 表）
+  - `db.py`：封装 SQLite3 连接、数据库初始化（`init_db` 创建 users/roles/functions/role_functions 四张表）、种子数据（`seed_admin` 管理员、`seed_roles_and_functions` 默认角色与菜单功能）
   - `user.py`：`UserRepository` 类，提供用户创建、查询、密码验证等数据操作；密码采用 PBKDF2-HMAC-SHA256 + 随机 salt 加密
+  - `role.py`：`RoleRepository` 类，角色 CRUD + 分页搜索 + 功能权限分配（二级联动）
+  - `function.py`：`FunctionRepository` 类，功能/菜单 CRUD + 分页搜索 + 树形结构获取 + 级联删除
 - **View（视图层）** — `app/templates/`
-  - 前台页面（`web/`）与后台页面（`admin/`）分离
-  - 当前使用 Tornado 内置模板系统，HTML 文件预留，待填充内容
+  - 后台页面（`admin/`）：登录页、基础布局模板（ZUI 上/左/右布局）、控制台首页
+  - **功能管理**：`func_list.html`（列表+分页+搜索）、`func_edit.html`（新增/编辑表单）
+  - **角色管理**：`role_list.html`（列表+分页+搜索）、`role_edit.html`（编辑含二级联动功能权限树）
+  - **用户管理**：`user_list.html`（列表+分页+搜索）、`user_edit.html`（新增/编辑表单）
+  - 前台页面（`web/`）：预留，待后续开发
 - **Controller（控制层）** — `app/controllers/`
-  - 负责接收 HTTP 请求、调用 Model、渲染 View 返回响应
-  - 当前控制器文件已创建但内容为空，路由暂时定义在 `app.py` 中
+  - `admin_auth.py`：后台认证控制器（登录/登出/主页）
+  - `admin_manage.py`：后台管理控制器（功能/角色/用户三大模块的完整 CRUD）
+
+### 数据库设计
+| 表名 | 说明 | 关键字段 |
+|------|------|----------|
+| `users` | 用户表 | id, username, password_hash, salt, role_id, status, created_at |
+| `roles` | 角色表 | id, name, description, is_system(系统内置标识), created_at |
+| `functions` | 功能/菜单表 | id, parent_id(上级ID,0=顶级), name, code(唯一编码), icon, path, sort_order, status |
+| `role_functions` | 角色-功能关联表 | role_id, function_id (联合唯一，实现二级联动) |
 
 ### 主入口（app.py）
 - 使用 `tornado.web.Application` 创建 Web 应用实例
 - 路由表以列表形式注册 `(路径, Handler类)` 映射
+- 配置静态文件路径（`static_path`）、模板路径（`template_path`）、Cookie 密钥（`cookie_secret`）
+- 启动时自动执行 `init_db()` + `seed_admin()` + `seed_roles_and_functions()`
 - `tornado.httpserver.HTTPServer` 启动服务，监听端口 **10086**
-- `debug="True"` 开启调试模式
+- `debug=True` 开启调试模式
+
+### 路由表
+| 路径 | Handler | 说明 |
+|------|---------|------|
+| `/` | IndexHandler | 前台首页 |
+| `/admin/login` | AdminLoginHandler | 后台登录页 & 登录提交 |
+| `/admin/index` | AdminIndexHandler | 后台控制台（需登录） |
+| `/admin/logout` | AdminLogoutHandler | 后台登出 |
+| `/admin/functions` | FuncListHandler | 功能管理列表 |
+| `/admin/function/add` | FuncAddHandler(GET/POST) | 新增功能 |
+| `/admin/function/edit` | FuncEditHandler(GET/POST) | 编辑功能 |
+| `/admin/function/delete` | FuncDeleteHandler(POST) | 删除功能 |
+| `/admin/roles` | RoleListHandler | 角色管理列表 |
+| `/admin/role/add` | RoleAddHandler(GET/POST) | 新增角色 |
+| `/admin/role/edit` | RoleEditHandler(GET/POST) | 编辑角色（含功能联动） |
+| `/admin/role/delete` | RoleDeleteHandler(POST) | 删除角色（系统内置不可删） |
+| `/admin/users` | UserListHandler | 用户管理列表 |
+| `/admin/user/add` | UserAddHandler(GET/POST) | 新增用户 |
+| `/admin/user/edit` | UserEditHandler(GET/POST) | 编辑用户 |
+| `/admin/user/delete` | UserDeleteHandler(POST) | 删除用户（admin不可删） |
 
 ### 数据流
 ```
@@ -146,5 +197,10 @@ python test/testCase1.py
 
 ### 当前开发状态
 - v0.1 阶段，已完成框架搭建、数据库设计、用户模型实现
-- 控制器和视图层文件已创建但内容为空，待后续填充
-- 路由当前硬编码在 `app.py` 中，后续应迁移至 `controllers/` 统一管理
+- **后台认证模块**：登录页（响应式+沉浸式+居中面板）、控制台首页（ZUI 上/左/右布局）、认证控制器
+- **功能管理模块**：CRUD + 分页(20条/页) + 模糊搜索 + 级联删除 + 树形菜单展示
+- **角色管理模块**：CRUD + 分页(20条/页) + 模糊搜索 + 二级联动功能权限分配（系统内置角色不可删除修改）
+- **用户管理模块**：CRUD + 分页(20条/页) + 模糊搜索 + 角色分配（admin 不可删除）
+- 默认管理员账号：**admin / 123456**
+- 默认角色：超级管理员、普通管理员、普通用户（含预置功能权限）
+- 前台页面（`web/`）预留待后续开发
