@@ -101,7 +101,7 @@
             <td>{{ employee['model_name'] or '默认模型' }}</td>
             <td>{{ employee['role_name'] or '-' }}</td>
             <td>
-                {% set skills = employee['_skills'] %}
+                {% set skills = employee['_skill_names'] %}
                 {{ len(skills) }} 项
             </td>
             <td>{{ employee['created_at'] }}</td>

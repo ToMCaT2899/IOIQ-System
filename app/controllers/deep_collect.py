@@ -8,20 +8,11 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 
 from app.models.db import get_connection
+from app.utils.auth import require_admin, get_username
 from app.models.deep_result import DeepResultRepository
 from app.models.model_engine import ModelEngineRepository
 
 
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _send_sse(handler, data: dict):
@@ -39,7 +30,7 @@ class DeepCollectListHandler(tornado.web.RequestHandler):
     """深度采集结果列表页 — 展示所有深度采集记录及进度"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         page_size = 20
@@ -59,7 +50,7 @@ class DeepCollectListHandler(tornado.web.RequestHandler):
 
         self.render(
             "admin/deep_collect_list.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="deep",
             list=rows, total=total, page=page, page_size=page_size,
             total_pages=total_pages,
@@ -70,7 +61,7 @@ class DeepCollectSSEHandler(tornado.web.RequestHandler):
     """深度采集 SSE 流式接口 — 支持单条/批量"""
 
     async def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
 
         body = json.loads(self.request.body or "{}")
@@ -261,7 +252,7 @@ class DeepCollectDetailHandler(tornado.web.RequestHandler):
     """深度采集结果详情页"""
 
     def get(self, watch_id):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         watch_id = int(watch_id)
         item = _get_watch_result(watch_id)
@@ -272,7 +263,7 @@ class DeepCollectDetailHandler(tornado.web.RequestHandler):
         deep = DeepResultRepository.get_by_watch_result_id(watch_id)
         self.render(
             "admin/deep_detail.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="deep",
             item=item,
             deep=deep,

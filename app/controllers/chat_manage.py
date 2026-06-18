@@ -4,19 +4,10 @@ import json
 import tornado.web
 
 from app.models.chat_manage import ChatManageRepository
+from app.utils.auth import require_admin, get_username
 from app.models.session_manage import SessionRepository
 
 
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _int_arg(handler, key, default=0):
@@ -30,7 +21,7 @@ class ChatListHandler(tornado.web.RequestHandler):
     """对话消息列表页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
@@ -52,7 +43,7 @@ class ChatListHandler(tornado.web.RequestHandler):
         users = ChatManageRepository.get_user_list()
         self.render(
             "admin/chat_list.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="chats",
             **result,
             total_pages=total_pages,
@@ -68,7 +59,7 @@ class ChatDeleteHandler(tornado.web.RequestHandler):
     """删除单条消息"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         msg_id = _int_arg(self, "id")
         ChatManageRepository.delete(msg_id)
@@ -80,7 +71,7 @@ class ChatBatchDeleteHandler(tornado.web.RequestHandler):
     """批量删除消息"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         ids_str = self.get_body_argument("ids", "").strip()
         if ids_str:
@@ -94,7 +85,7 @@ class ChatReviewHandler(tornado.web.RequestHandler):
     """设置审核状态"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         ids_str = self.get_body_argument("ids", "").strip()
         status = self.get_body_argument("review_status", "normal").strip()
@@ -109,7 +100,7 @@ class ChatScanHandler(tornado.web.RequestHandler):
     """敏感词扫描"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         hits = ChatManageRepository.auto_flag_sensitive()
         count = len(hits) if hits else 0
@@ -120,7 +111,7 @@ class ChatContextHandler(tornado.web.RequestHandler):
     """查看消息上下文链路"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         msg_id = _int_arg(self, "id")
         msg = ChatManageRepository.get_by_id(msg_id)
@@ -133,7 +124,7 @@ class ChatContextHandler(tornado.web.RequestHandler):
         session = SessionRepository.get_by_id(msg["conversation_id"])
         self.render(
             "admin/chat_context.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="chats",
             msg=msg,
             messages=messages,
@@ -146,7 +137,7 @@ class ChatExportHandler(tornado.web.RequestHandler):
     """导出对话消息"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         result = ChatManageRepository.paginate(page=1, page_size=10000)
         export_data = []
@@ -172,14 +163,14 @@ class ChatStatsHandler(tornado.web.RequestHandler):
     """对话消息统计页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         stats = ChatManageRepository.get_stats()
         # 获取审核统计
         auto_hits = ChatManageRepository.scan_sensitive()
         self.render(
             "admin/chat_stats.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="chats",
             stats=stats,
             sensitive_hits_count=len(auto_hits),

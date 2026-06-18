@@ -4,19 +4,10 @@ import json
 import tornado.web
 
 from app.models.sentiment import SentimentRepository, SentimentAlertRepository
+from app.utils.auth import require_admin, get_username
 from app.services.sentiment_service import run_batch_analysis
 
 
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _int_arg(handler, key, default=0):
@@ -30,7 +21,7 @@ class SentimentPageHandler(tornado.web.RequestHandler):
     """舆情分析主页面"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         sentiment_filter = self.get_argument("sentiment", "").strip()
@@ -55,7 +46,7 @@ class SentimentPageHandler(tornado.web.RequestHandler):
 
         self.render(
             "admin/sentiment.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="sentiment",
             **result,
             total_pages=total_pages,
@@ -74,7 +65,7 @@ class SentimentAnalyzeHandler(tornado.web.RequestHandler):
     """执行舆情分析（SSE 流式）"""
 
     async def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         source_type = self.get_body_argument("source_type", "all").strip()
         model_engine_id = _int_arg(self, "model_engine_id", 0)
@@ -118,7 +109,7 @@ class SentimentDataHandler(tornado.web.RequestHandler):
     """舆情数据 API（JSON）— 供前端图表使用"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         data = {
             "distribution": SentimentRepository.get_sentiment_distribution(7),
@@ -139,7 +130,7 @@ class SentimentDeleteHandler(tornado.web.RequestHandler):
     """删除单条分析结果"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         analysis_id = _int_arg(self, "id", 0)
         if analysis_id:
@@ -151,7 +142,7 @@ class SentimentReportHandler(tornado.web.RequestHandler):
     """生成舆情分析报告"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         dist = SentimentRepository.get_sentiment_distribution(7)
         risk_dist = SentimentRepository.get_risk_distribution(7)
@@ -162,7 +153,7 @@ class SentimentReportHandler(tornado.web.RequestHandler):
 
         self.render(
             "admin/sentiment_report.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="sentiment",
             dist=dist,
             risk_dist=risk_dist,
@@ -179,7 +170,7 @@ class SentimentAlertsHandler(tornado.web.RequestHandler):
     """告警列表"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         status = self.get_argument("status", "").strip()
@@ -194,7 +185,7 @@ class SentimentAlertsHandler(tornado.web.RequestHandler):
 
         self.render(
             "admin/sentiment_alerts.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="sentiment",
             **result,
             total_pages=total_pages,
@@ -208,10 +199,10 @@ class SentimentAlertMarkHandler(tornado.web.RequestHandler):
     """标记告警为已读"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         alert_id = _int_arg(self, "id", 0)
-        username = _get_current_user(self)
+        username = get_username(self)
         if alert_id:
             SentimentAlertRepository.mark_read(alert_id, username)
         self.redirect("/admin/sentiment/alerts")
@@ -221,9 +212,9 @@ class SentimentAlertMarkAllHandler(tornado.web.RequestHandler):
     """全部标记已读"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
-        username = _get_current_user(self)
+        username = get_username(self)
         SentimentAlertRepository.mark_all_read(username)
         self.redirect("/admin/sentiment/alerts")
 
@@ -232,7 +223,7 @@ class SentimentAlertDeleteHandler(tornado.web.RequestHandler):
     """删除告警"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         alert_id = _int_arg(self, "id", 0)
         if alert_id:

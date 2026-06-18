@@ -6,19 +6,11 @@ import tornado.web
 from openai import OpenAI
 
 from app.models.digital_employee import DigitalEmployeeRepository, EmployeeVersionRepository
+from app.utils.auth import require_admin, get_username
 from app.models.model_engine import ModelEngineRepository
+from app.models.ai_skill import AiSkillRepository
 
 
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _int_arg(handler, key, default=0):
@@ -28,30 +20,53 @@ def _int_arg(handler, key, default=0):
         return default
 
 
+def _resolve_skill_ids(skills_raw: str):
+    """将 skills 字段解析为技能ID列表，兼容旧格式（名称数组→空）"""
+    if not skills_raw:
+        return []
+    try:
+        data = json.loads(skills_raw)
+    except Exception:
+        return []
+    if not data:
+        return []
+    # 新格式：[1, 2, 3] 技能ID
+    if isinstance(data[0], int):
+        return data
+    # 旧格式：["名称1", "名称2"]，返回空（不再支持名称匹配）
+    return []
+
+
+def _get_skill_name_map():
+    """获取 {skill_id: skill_name} 映射"""
+    skills = AiSkillRepository.get_all()
+    return {s["id"]: s["name"] for s in skills}
+
+
 class EmployeeListHandler(tornado.web.RequestHandler):
     """数字员工列表页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
         result = DigitalEmployeeRepository.paginate(page=page, page_size=12, keyword=keyword)
-        # 预解析技能 JSON
+        skill_map = _get_skill_name_map()
+        # 预解析技能数据
         parsed_list = []
         for item in result["list"]:
             item_dict = dict(item)
-            try:
-                item_dict["_skills"] = json.loads(item_dict.get("skills") or "[]")
-            except Exception:
-                item_dict["_skills"] = []
+            skill_ids = _resolve_skill_ids(item_dict.get("skills") or "")
+            item_dict["_skill_ids"] = skill_ids
+            item_dict["_skill_names"] = [skill_map.get(sid, f"技能#{sid}") for sid in skill_ids]
             parsed_list.append(item_dict)
         result["list"] = parsed_list
         total_pages = (result["total"] + 11) // 12
         global_stats = DigitalEmployeeRepository.get_stats()
         self.render(
             "admin/employee_list.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="employee",
             **result,
             total_pages=total_pages,
@@ -64,26 +79,31 @@ class EmployeeAddHandler(tornado.web.RequestHandler):
     """新增数字员工"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         models = ModelEngineRepository.get_all()
+        all_skills = AiSkillRepository.get_all(enabled_only=False)
         self.render(
             "admin/employee_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="employee",
             employee=None,
             is_add=True,
             models=models,
+            all_skills=all_skills,
+            employee_skill_ids=[],
         )
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         name = self.get_body_argument("name", "").strip()
         role_name = self.get_body_argument("role_name", "").strip()
         avatar = self.get_body_argument("avatar", "").strip()
         greeting = self.get_body_argument("greeting", "").strip()
-        skills = self.get_body_argument("skills", "[]").strip()
+        # 从多选复选框收集技能ID
+        skill_ids = [int(x) for x in self.get_body_arguments("skill_ids") if x.isdigit()]
+        skills = json.dumps(skill_ids)
         model_engine_id = _int_arg(self, "model_engine_id", 0)
         model_name = self.get_body_argument("model_name", "").strip()
         system_prompt = self.get_body_argument("system_prompt", "").strip()
@@ -107,7 +127,7 @@ class EmployeeEditHandler(tornado.web.RequestHandler):
     """编辑数字员工"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         employee_id = _int_arg(self, "id")
         employee = DigitalEmployeeRepository.get_by_id(employee_id)
@@ -115,19 +135,23 @@ class EmployeeEditHandler(tornado.web.RequestHandler):
             self.redirect("/admin/employees")
             return
         models = ModelEngineRepository.get_all()
+        all_skills = AiSkillRepository.get_all(enabled_only=False)
         versions = EmployeeVersionRepository.get_by_employee(employee_id)
+        employee_skill_ids = _resolve_skill_ids(employee["skills"] or "")
         self.render(
             "admin/employee_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="employee",
             employee=employee,
             is_add=False,
             models=models,
             versions=versions,
+            all_skills=all_skills,
+            employee_skill_ids=[str(x) for x in employee_skill_ids],
         )
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         employee_id = _int_arg(self, "id")
         employee = DigitalEmployeeRepository.get_by_id(employee_id)
@@ -138,7 +162,9 @@ class EmployeeEditHandler(tornado.web.RequestHandler):
         role_name = self.get_body_argument("role_name", "").strip()
         avatar = self.get_body_argument("avatar", "").strip()
         greeting = self.get_body_argument("greeting", "").strip()
-        skills = self.get_body_argument("skills", "[]").strip()
+        # 从多选复选框收集技能ID
+        skill_ids = [int(x) for x in self.get_body_arguments("skill_ids") if x.isdigit()]
+        skills = json.dumps(skill_ids)
         model_engine_id = _int_arg(self, "model_engine_id", 0)
         model_name = self.get_body_argument("model_name", "").strip()
         system_prompt = self.get_body_argument("system_prompt", "").strip()
@@ -167,7 +193,7 @@ class EmployeeDeleteHandler(tornado.web.RequestHandler):
     """删除数字员工"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         employee_id = _int_arg(self, "id")
         DigitalEmployeeRepository.delete(employee_id)
@@ -178,7 +204,7 @@ class EmployeeToggleStatusHandler(tornado.web.RequestHandler):
     """切换员工状态（启用/停用）"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         employee_id = _int_arg(self, "id")
         status = self.get_body_argument("status", "enabled").strip()
@@ -190,7 +216,7 @@ class EmployeeChatHandler(tornado.web.RequestHandler):
     """数字员工对话测试页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         employee_id = _int_arg(self, "id")
         employee = DigitalEmployeeRepository.get_by_id(employee_id)
@@ -198,15 +224,15 @@ class EmployeeChatHandler(tornado.web.RequestHandler):
             self.redirect("/admin/employees")
             return
         stats = DigitalEmployeeRepository.get_stats(employee_id)
-        # 预解析技能 JSON（sqlite3.Row 转 dict）
+        # 解析技能 ID → 技能名称
         employee_dict = dict(employee)
-        try:
-            employee_dict["_skills"] = json.loads(employee_dict.get("skills") or "[]")
-        except Exception:
-            employee_dict["_skills"] = []
+        skill_ids = _resolve_skill_ids(employee_dict.get("skills") or "")
+        skill_map = _get_skill_name_map()
+        employee_dict["_skill_names"] = [skill_map.get(sid, f"技能#{sid}") for sid in skill_ids]
+        employee_dict["_skill_ids"] = skill_ids
         self.render(
             "admin/employee_chat.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="employee",
             employee=employee_dict,
             stats=stats,
@@ -217,7 +243,7 @@ class EmployeeChatSSEHandler(tornado.web.RequestHandler):
     """数字员工 SSE 流式对话测试"""
 
     async def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         employee_id = _int_arg(self, "id")
         employee = DigitalEmployeeRepository.get_by_id(employee_id)
@@ -307,7 +333,7 @@ class EmployeeStatsHandler(tornado.web.RequestHandler):
     """数字员工统计页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         employee_id = _int_arg(self, "id")
         employee = None
@@ -318,16 +344,16 @@ class EmployeeStatsHandler(tornado.web.RequestHandler):
         if employee:
             versions = EmployeeVersionRepository.get_by_employee(employee_id)
             employee_dict = dict(employee)
-            try:
-                employee_dict["_skills"] = json.loads(employee_dict.get("skills") or "[]")
-            except Exception:
-                employee_dict["_skills"] = []
+            skill_ids = _resolve_skill_ids(employee_dict.get("skills") or "")
+            skill_map = _get_skill_name_map()
+            employee_dict["_skill_names"] = [skill_map.get(sid, f"技能#{sid}") for sid in skill_ids]
+            employee_dict["_skill_ids"] = skill_ids
         else:
             employee_dict = None
         all_employees = DigitalEmployeeRepository.get_all()
         self.render(
             "admin/employee_stats.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="employee",
             employee=employee_dict,
             stats=stats,

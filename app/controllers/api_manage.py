@@ -6,18 +6,9 @@ import tornado.web
 import requests
 
 from app.models.api_interface import ApiInterfaceRepository, ApiCallLogRepository
+from app.utils.auth import require_admin, get_username
 
 
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _int_arg(handler, key, default=0):
@@ -31,7 +22,7 @@ class ApiListHandler(tornado.web.RequestHandler):
     """接口管理列表页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
@@ -45,7 +36,7 @@ class ApiListHandler(tornado.web.RequestHandler):
             result["list"][result["list"].index(item)] = item_dict
         self.render(
             "admin/api_list.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="api",
             **result,
             total_pages=total_pages,
@@ -57,18 +48,18 @@ class ApiAddHandler(tornado.web.RequestHandler):
     """新增接口"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         self.render(
             "admin/api_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="api",
             interface=None,
             is_add=True,
         )
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         name = self.get_body_argument("name", "").strip()
         path = self.get_body_argument("path", "").strip()
@@ -86,7 +77,7 @@ class ApiEditHandler(tornado.web.RequestHandler):
     """编辑接口"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         interface_id = _int_arg(self, "id")
         interface = ApiInterfaceRepository.get_by_id(interface_id)
@@ -95,14 +86,14 @@ class ApiEditHandler(tornado.web.RequestHandler):
             return
         self.render(
             "admin/api_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="api",
             interface=interface,
             is_add=False,
         )
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         interface_id = _int_arg(self, "id")
         interface = ApiInterfaceRepository.get_by_id(interface_id)
@@ -127,7 +118,7 @@ class ApiDeleteHandler(tornado.web.RequestHandler):
     """删除接口（软删除）"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         interface_id = _int_arg(self, "id")
         ApiInterfaceRepository.delete(interface_id)
@@ -138,7 +129,7 @@ class ApiDebugHandler(tornado.web.RequestHandler):
     """在线调试接口 — 模拟请求并 SSE 流式返回"""
 
     async def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         interface_id = _int_arg(self, "id")
         interface = ApiInterfaceRepository.get_by_id(interface_id)
@@ -259,7 +250,7 @@ class ApiDebugPageHandler(tornado.web.RequestHandler):
     """在线调试页面"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         interface_id = _int_arg(self, "id")
         interface = ApiInterfaceRepository.get_by_id(interface_id)
@@ -269,7 +260,7 @@ class ApiDebugPageHandler(tornado.web.RequestHandler):
         stats = ApiInterfaceRepository.get_stats(interface_id)
         self.render(
             "admin/api_debug.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="api",
             interface=interface,
             stats=stats,
@@ -280,7 +271,7 @@ class ApiStatsHandler(tornado.web.RequestHandler):
     """接口统计页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         interface_id = _int_arg(self, "id")
         interface = None
@@ -289,7 +280,7 @@ class ApiStatsHandler(tornado.web.RequestHandler):
         stats = ApiInterfaceRepository.get_stats(interface_id)
         self.render(
             "admin/api_stats.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="api",
             interface=interface,
             stats=stats,
@@ -300,7 +291,7 @@ class ApiLogsHandler(tornado.web.RequestHandler):
     """接口调用日志列表"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         interface_id = _int_arg(self, "interface_id", 0)
@@ -309,7 +300,7 @@ class ApiLogsHandler(tornado.web.RequestHandler):
         interfaces = ApiInterfaceRepository.get_all()
         self.render(
             "admin/api_logs.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="api",
             **result,
             total_pages=total_pages,
@@ -322,7 +313,7 @@ class ApiClearLogsHandler(tornado.web.RequestHandler):
     """清空日志"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         interface_id = _int_arg(self, "interface_id", 0)
         ApiCallLogRepository.clear_logs(interface_id)
@@ -333,7 +324,7 @@ class ApiDocHandler(tornado.web.RequestHandler):
     """接口文档页面"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         interfaces = ApiInterfaceRepository.get_all()
         # 预解析 params 和 headers JSON（sqlite3.Row 转 dict）
@@ -352,7 +343,7 @@ class ApiDocHandler(tornado.web.RequestHandler):
         interfaces = parsed
         self.render(
             "admin/api_doc.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="api",
             interfaces=interfaces,
         )
@@ -362,7 +353,7 @@ class ApiDocExportHandler(tornado.web.RequestHandler):
     """导出接口文档（Markdown 格式下载）"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         interfaces = ApiInterfaceRepository.get_all()
         lines = ["# IOIQ System API 接口文档\n"]

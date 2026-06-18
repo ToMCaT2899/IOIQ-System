@@ -123,7 +123,7 @@
                 <span><i class="fas fa-phone"></i> {{ emp['total_calls'] }} 次</span>
                 <span><i class="fas fa-coins"></i> {{ emp['total_tokens'] }}</span>
             </div>
-            {% set skills_list = emp['_skills'] %}
+            {% set skills_list = emp['_skill_names'] %}
             {% if len(skills_list) > 0 %}
             <div class="skill-tags">
                 {% for s in skills_list[:5] %}

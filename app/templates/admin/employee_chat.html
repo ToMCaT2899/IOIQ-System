@@ -67,10 +67,10 @@
         <div class="info-item"><span>Token 消耗</span><span class="val">{{ stats['total_tokens'] }}</span></div>
         <div class="info-item"><span>平均耗时</span><span class="val">{{ stats['avg_duration_ms'] }}ms</span></div>
         <hr class="divider">
-        {% set skills = employee['_skills'] %}
-        {% if len(skills) > 0 %}
-        <div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">技能列表</div>
-        {% for s in skills %}
+        {% set skill_list = employee['_skill_names'] %}
+        {% if len(skill_list) > 0 %}
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">绑定技能</div>
+        {% for s in skill_list %}
         <span style="display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;background:#eef2ff;color:#4a6cf7;margin:2px;">{{ s }}</span>
         {% end %}
         {% end %}

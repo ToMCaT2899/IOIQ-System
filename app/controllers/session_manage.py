@@ -5,18 +5,9 @@ import tornado.web
 import tornado.escape
 
 from app.models.session_manage import SessionRepository
+from app.utils.auth import require_admin, get_username
 
 
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _int_arg(handler, key, default=0):
@@ -30,7 +21,7 @@ class SessionListHandler(tornado.web.RequestHandler):
     """会话管理列表页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
@@ -48,7 +39,7 @@ class SessionListHandler(tornado.web.RequestHandler):
         users = SessionRepository.get_user_list()
         self.render(
             "admin/session_list.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="sessions",
             **result,
             total_pages=total_pages,
@@ -62,7 +53,7 @@ class SessionDetailHandler(tornado.web.RequestHandler):
     """会话详情页 — 展示完整对话历史"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         conv_id = _int_arg(self, "id")
         session = SessionRepository.get_by_id(conv_id)
@@ -72,7 +63,7 @@ class SessionDetailHandler(tornado.web.RequestHandler):
         messages = SessionRepository.get_messages(conv_id)
         self.render(
             "admin/session_detail.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="sessions",
             session=session,
             messages=messages,
@@ -83,7 +74,7 @@ class SessionEditTitleHandler(tornado.web.RequestHandler):
     """修改会话标题"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         conv_id = _int_arg(self, "id")
         title = self.get_body_argument("title", "").strip()
@@ -96,7 +87,7 @@ class SessionEditTagsHandler(tornado.web.RequestHandler):
     """修改会话标记"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         conv_id = _int_arg(self, "id")
         tags = self.get_body_argument("tags", "").strip()
@@ -108,7 +99,7 @@ class SessionArchiveHandler(tornado.web.RequestHandler):
     """归档/取消归档"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         conv_id = _int_arg(self, "id")
         action = self.get_body_argument("action", "archive").strip()
@@ -123,7 +114,7 @@ class SessionDeleteHandler(tornado.web.RequestHandler):
     """删除会话"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         conv_id = _int_arg(self, "id")
         SessionRepository.delete(conv_id)
@@ -134,7 +125,7 @@ class SessionBatchDeleteHandler(tornado.web.RequestHandler):
     """批量删除会话"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         ids_str = self.get_body_argument("ids", "").strip()
         if ids_str:
@@ -148,7 +139,7 @@ class SessionExportHandler(tornado.web.RequestHandler):
     """导出会话 — JSON"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         conv_id = _int_arg(self, "id")
         fmt = self.get_argument("format", "json").strip()
@@ -183,12 +174,12 @@ class SessionStatsHandler(tornado.web.RequestHandler):
     """会话统计页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         stats = SessionRepository.get_stats()
         self.render(
             "admin/session_stats.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="sessions",
             stats=stats,
         )

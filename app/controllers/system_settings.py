@@ -9,18 +9,9 @@ from app.models.system_settings import (
     OperationLogRepository,
 )
 from app.models.db import get_db_config, set_db_config, test_mysql_connection, get_engine, DB_CONFIG_FILE
+from app.utils.auth import require_admin, get_username
 
 
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _int_arg(handler, key, default=0):
@@ -34,12 +25,12 @@ def _int_arg(handler, key, default=0):
 
 class SystemSettingsHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         settings = SystemSettingsRepository.get_all()
         self.render(
             "admin/system_settings.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="system",
             settings=settings,
             msg=self.get_query_argument("msg", ""),
@@ -48,14 +39,14 @@ class SystemSettingsHandler(tornado.web.RequestHandler):
 
 class SystemSettingsSaveHandler(tornado.web.RequestHandler):
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         data = {}
         for key in self.request.body_arguments:
             val = self.get_body_argument(key, "")
             data[key] = val
         SystemSettingsRepository.save_changes(data)
-        op = _get_current_user(self)
+        op = get_username(self)
         OperationLogRepository.log(
             operator=op,
             action="update_settings",
@@ -69,12 +60,12 @@ class SystemSettingsSaveHandler(tornado.web.RequestHandler):
 
 class SystemBackupHandler(tornado.web.RequestHandler):
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         try:
             path = SystemSettingsRepository.backup_database()
             OperationLogRepository.log(
-                operator=_get_current_user(self),
+                operator=get_username(self),
                 action="backup",
                 detail=f"数据库备份: {path}",
                 ip=self.request.remote_ip,
@@ -86,7 +77,7 @@ class SystemBackupHandler(tornado.web.RequestHandler):
 
 class SystemRestoreHandler(tornado.web.RequestHandler):
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         filename = self.get_body_argument("file", "").strip()
         if not filename:
@@ -95,7 +86,7 @@ class SystemRestoreHandler(tornado.web.RequestHandler):
         ok = SystemSettingsRepository.restore_backup(filename)
         if ok:
             OperationLogRepository.log(
-                operator=_get_current_user(self),
+                operator=get_username(self),
                 action="restore",
                 detail=f"从备份恢复: {filename}",
                 ip=self.request.remote_ip,
@@ -109,14 +100,14 @@ class SystemRestoreHandler(tornado.web.RequestHandler):
 
 class SystemStatusHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         status = SystemSettingsRepository.get_system_status()
         backups = SystemSettingsRepository.list_backups()
         settings = SystemSettingsRepository.get_all()
         self.render(
             "admin/system_status.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="system",
             status=status,
             backups=backups,
@@ -126,7 +117,7 @@ class SystemStatusHandler(tornado.web.RequestHandler):
 
 class SystemStatusJsonHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         status = SystemSettingsRepository.get_system_status()
         self.set_header("Content-Type", "application/json; charset=utf-8")
@@ -137,7 +128,7 @@ class SystemStatusJsonHandler(tornado.web.RequestHandler):
 
 class OperationLogHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         operator = self.get_argument("operator", "").strip()
@@ -153,7 +144,7 @@ class OperationLogHandler(tornado.web.RequestHandler):
         actions = OperationLogRepository.get_actions()
         self.render(
             "admin/operation_logs.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="system",
             **result,
             total_pages=total_pages,
@@ -165,11 +156,11 @@ class OperationLogHandler(tornado.web.RequestHandler):
 
 class OperationLogClearHandler(tornado.web.RequestHandler):
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         OperationLogRepository.clear()
         OperationLogRepository.log(
-            operator=_get_current_user(self),
+            operator=get_username(self),
             action="clear_logs",
             detail="清空操作日志",
             ip=self.request.remote_ip,
@@ -179,7 +170,7 @@ class OperationLogClearHandler(tornado.web.RequestHandler):
 
 class OperationLogExportHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         result = OperationLogRepository.paginate(page=1, page_size=50000)
         data = []
@@ -205,13 +196,13 @@ class DbConfigHandler(tornado.web.RequestHandler):
     """数据库配置页面"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         cfg = get_db_config()
         engine = get_engine()
         self.render(
             "admin/db_config.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="system",
             db_config=cfg,
             engine=engine,
@@ -223,7 +214,7 @@ class DbConfigSaveHandler(tornado.web.RequestHandler):
     """保存 MySQL 连接参数"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         cfg = get_db_config()
         mysql_cfg = cfg.get("mysql", {})
@@ -235,7 +226,7 @@ class DbConfigSaveHandler(tornado.web.RequestHandler):
         cfg["mysql"] = mysql_cfg
         set_db_config(cfg)
         OperationLogRepository.log(
-            operator=_get_current_user(self),
+            operator=get_username(self),
             action="db_config",
             detail="更新 MySQL 数据库连接参数",
             ip=self.request.remote_ip,
@@ -247,7 +238,7 @@ class DbTestHandler(tornado.web.RequestHandler):
     """测试 MySQL 连接"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         cfg = {
             "host": self.get_body_argument("db_host", "localhost").strip(),
@@ -265,7 +256,7 @@ class DbMigrateHandler(tornado.web.RequestHandler):
     """执行数据库迁移（SSE 流式进度）"""
 
     async def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         self.set_header("Content-Type", "text/event-stream")
         self.set_header("Cache-Control", "no-cache")
@@ -291,7 +282,7 @@ class DbMigrateHandler(tornado.web.RequestHandler):
             result = future.result(timeout=300)
 
             OperationLogRepository.log(
-                operator=_get_current_user(self),
+                operator=get_username(self),
                 action="db_migrate",
                 detail=f"数据库迁移: {result.get('source_engine')} → {result.get('target_engine')}, "
                         f"{result.get('tables_migrated', 0)} 表, {result.get('rows_migrated', 0)} 行",
@@ -317,13 +308,13 @@ class DbSwitchHandler(tornado.web.RequestHandler):
     """切换数据库引擎（仅切换，不迁移）"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         target = self.get_body_argument("target", "sqlite").strip()
         from app.services.db_migration import switch_engine
         result = switch_engine(target)
         OperationLogRepository.log(
-            operator=_get_current_user(self),
+            operator=get_username(self),
             action="db_switch",
             detail=f"数据库引擎切换至: {target}, 结果: {result.get('message', '')}",
             ip=self.request.remote_ip,

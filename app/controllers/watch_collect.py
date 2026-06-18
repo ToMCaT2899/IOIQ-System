@@ -8,21 +8,16 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 
 from app.models.watch_source import WatchSourceRepository
+from app.utils.auth import require_admin, get_username
 from app.models.watch_result import WatchResultRepository
 
-
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
 
 
 class WatchCollectPageHandler(tornado.web.RequestHandler):
     """瞭望采集主页面（独立科技风，不继承 base.html）"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         self.render("admin/watch_collect.html", current_page="watch_collect")
 
@@ -31,7 +26,7 @@ class WatchCollectSourcesHandler(tornado.web.RequestHandler):
     """获取可用数据源列表（JSON）"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         sources = WatchSourceRepository.get_all()
         data = [{
@@ -48,7 +43,7 @@ class WatchCollectFetchHandler(tornado.web.RequestHandler):
     """执行采集 — SSE 流式返回进度与结果"""
 
     async def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
 
         body = json.loads(self.request.body or "{}")
@@ -168,7 +163,7 @@ class WatchCollectSaveHandler(tornado.web.RequestHandler):
     """保存选中的采集结果到数据库"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         body = json.loads(self.request.body or "{}")
         results = body.get("results", [])

@@ -3,6 +3,7 @@
 import tornado.web
 from app.models.user import UserRepository
 from app.models.db import init_db, seed_admin, get_connection
+from app.utils.auth import is_admin, require_admin, get_username
 
 
 class AdminLoginHandler(tornado.web.RequestHandler):
@@ -21,15 +22,7 @@ class AdminLoginHandler(tornado.web.RequestHandler):
 
         if UserRepository.verify_user(username, password):
             # 检查用户角色，仅管理员可登录后台
-            with get_connection() as conn:
-                user = conn.execute(
-                    "SELECT r.name AS role_name FROM users u "
-                    "LEFT JOIN roles r ON u.role_id = r.id "
-                    "WHERE u.username = ?",
-                    (username,)
-                ).fetchone()
-            role_name = user["role_name"] if user else ""
-            if role_name not in ("超级管理员", "普通管理员"):
+            if not is_admin(username):
                 self.render("admin/login.html", error="该账号无后台管理权限，请使用管理员账号登录")
                 return
 
@@ -48,11 +41,9 @@ class AdminIndexHandler(tornado.web.RequestHandler):
     """后台主页（控制台）"""
 
     def get(self):
-        user = self.get_secure_cookie("admin_user")
-        if not user:
-            self.redirect("/admin/login")
+        if not require_admin(self):
             return
-        username = user.decode("utf-8") if isinstance(user, bytes) else user
+        username = get_username(self)
         self.render("admin/index.html", username=username, current_page="dashboard")
 
 
@@ -60,6 +51,8 @@ class AdminStatsHandler(tornado.web.RequestHandler):
     """控制台实时统计数据 API"""
 
     def get(self):
+        if not require_admin(self):
+            return
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.set_header("Cache-Control", "no-cache, no-store, must-revalidate")
         try:

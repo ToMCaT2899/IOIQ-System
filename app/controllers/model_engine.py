@@ -6,19 +6,9 @@ import tornado.ioloop
 from openai import OpenAI
 
 from app.models.model_engine import ModelEngineRepository
+from app.utils.auth import require_admin, get_username
 
 
-def _require_login(handler):
-    username = handler.get_secure_cookie("admin_user")
-    if not username:
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _int_arg(handler, key, default=0):
@@ -30,7 +20,7 @@ def _int_arg(handler, key, default=0):
 
 class ModelListHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
@@ -38,7 +28,7 @@ class ModelListHandler(tornado.web.RequestHandler):
         total_pages = (result["total"] + 5) // 6
         self.render(
             "admin/model_list.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="models",
             **result,
             total_pages=total_pages,
@@ -48,18 +38,18 @@ class ModelListHandler(tornado.web.RequestHandler):
 
 class ModelAddHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         self.render(
             "admin/model_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="models",
             model=None,
             is_add=True,
         )
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         name = self.get_body_argument("name", "").strip()
         provider = self.get_body_argument("provider", "openai").strip()
@@ -83,7 +73,7 @@ class ModelAddHandler(tornado.web.RequestHandler):
 
 class ModelEditHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         model_id = _int_arg(self, "id")
         model = ModelEngineRepository.get_by_id(model_id)
@@ -92,14 +82,14 @@ class ModelEditHandler(tornado.web.RequestHandler):
             return
         self.render(
             "admin/model_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="models",
             model=model,
             is_add=False,
         )
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         model_id = _int_arg(self, "id")
         model = ModelEngineRepository.get_by_id(model_id)
@@ -130,7 +120,7 @@ class ModelEditHandler(tornado.web.RequestHandler):
 
 class ModelDeleteHandler(tornado.web.RequestHandler):
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         model_id = _int_arg(self, "id")
         ModelEngineRepository.delete(model_id)
@@ -139,7 +129,7 @@ class ModelDeleteHandler(tornado.web.RequestHandler):
 
 class ModelSetDefaultHandler(tornado.web.RequestHandler):
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         model_id = _int_arg(self, "id")
         ModelEngineRepository.set_default(model_id)
@@ -148,7 +138,7 @@ class ModelSetDefaultHandler(tornado.web.RequestHandler):
 
 class ModelChatHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         model_id = _int_arg(self, "id")
         model = ModelEngineRepository.get_by_id(model_id)
@@ -158,7 +148,7 @@ class ModelChatHandler(tornado.web.RequestHandler):
         all_models = ModelEngineRepository.get_all()
         self.render(
             "admin/model_chat.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="models",
             model=model,
             all_models=all_models,
@@ -169,7 +159,7 @@ class ModelChatSSEHandler(tornado.web.RequestHandler):
     """SSE 流式对话测试接口"""
 
     async def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         model_id = _int_arg(self, "id")
         model = ModelEngineRepository.get_by_id(model_id)

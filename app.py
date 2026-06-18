@@ -80,7 +80,7 @@ from app.controllers.sentiment import (
 )
 
 # 数据库初始化 & 种子数据
-from app.models.db import init_db, seed_admin, seed_roles_and_functions, seed_model_engines, seed_watch_sources
+from app.models.db import init_db, seed_admin, seed_roles_and_functions, seed_model_engines, seed_watch_sources, seed_skills
 
 
 def create_app():
@@ -90,6 +90,7 @@ def create_app():
     seed_roles_and_functions()
     seed_model_engines()
     seed_watch_sources()
+    seed_skills()
 
     return tornado.web.Application(
         [

@@ -2,7 +2,7 @@
 {% block title %}{% if is_add %}新增数字员工{% else %}编辑数字员工{% end %} - 数字员工{% end %}
 {% block head %}
 <style>
-    .form-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 28px; max-width: 850px; }
+    .form-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 28px; max-width: 950px; }
     .form-group { margin-bottom: 18px; }
     .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
     .form-control { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #e2e8f0; font-size: 14px; transition: all 0.2s; }
@@ -14,7 +14,7 @@
     .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(139,92,246,0.3); }
     .btn-back { padding: 11px 20px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
     .hint { font-size: 12px; color: #94a3b8; margin-top: 4px; }
-    select.form-control { cursor: pointer; }
+
     .version-section { margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
     .version-section h4 { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 6px; }
     .version-list { margin-top: 12px; }
@@ -56,17 +56,36 @@
         </div>
 
         <div class="form-group">
-            <label>技能列表（JSON 数组）</label>
-            <textarea name="skills" class="form-control" placeholder='["天气查询", "音乐推荐", "SQL问数"]' style="min-height:60px;">{{ employee['skills'] if employee else '[]' }}</textarea>
-            <div class="hint">JSON 数组格式，关联技能管理模块中已配置的技能</div>
+            <label>绑定技能 <span style="font-weight:400;color:#94a3b8;">（从技能管理中实时读取，多选）</span></label>
+            <div class="skill-checkbox-list" style="max-height:240px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 14px;">
+                {% if all_skills %}
+                    {% for s in all_skills %}
+                    {% set sid = str(s['id']) %}
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;border-bottom:1px solid #f8fafc;">
+                        <input type="checkbox" name="skill_ids" value="{{ s['id'] }}"
+                            {% if employee_skill_ids and sid in employee_skill_ids %}checked{% end %}
+                            style="width:16px;height:16px;accent-color:#8b5cf6;">
+                        <span style="flex:1;color:#334155;">{{ s['name'] }}</span>
+                        <span style="font-size:11px;padding:2px 8px;border-radius:4px;background:#eef2ff;color:#4a6cf7;">{{ s['category'] }}</span>
+                        {% if s['status'] != 'enabled' %}
+                        <span style="font-size:10px;color:#94a3b8;">({{ '已停用' if s['status'] == 'disabled' else '维护中' }})</span>
+                        {% end %}
+                    </label>
+                    {% end %}
+                {% else %}
+                    <p style="color:#94a3b8;text-align:center;padding:20px;">暂无技能，请先在<a href="/admin/skills" style="color:#8b5cf6;">技能管理</a>中创建</p>
+                {% end %}
+            </div>
+            <div class="hint">勾选后保存，技能关联实时生效；技能管理中的变更会自动同步</div>
         </div>
 
         <div class="form-group">
             <label>绑定模型引擎</label>
-            <select name="model_engine_id" class="form-control">
-                <option value="0">使用默认模型</option>
+            <select name="model_engine_id" class="form-control" title="选择模型引擎" style="height:40px;">
+                <option value="0" title="使用系统默认模型引擎">使用默认模型</option>
                 {% for m in models %}
-                <option value="{{ m['id'] }}" {% if employee and int(employee['model_engine_id']) == m['id'] %}selected{% end %}>{{ m['name'] }} ({{ m['model_name'] }})</option>
+                {% set full_text = m['name'] + ' · ' + m['model_name'] %}
+                <option value="{{ m['id'] }}" {% if employee and int(employee['model_engine_id']) == m['id'] %}selected{% end %} title="{{ full_text }}">{{ m['name'] }}</option>
                 {% end %}
             </select>
             <div class="hint">选择该员工使用的 AI 模型引擎</div>
@@ -81,7 +100,7 @@
         <div class="form-row">
             <div class="form-group">
                 <label>状态</label>
-                <select name="status" class="form-control">
+                <select name="status" class="form-control" style="height:40px;">
                     {% for s in [('enabled', '已启用'), ('disabled', '已停用'), ('maintenance', '维护中')] %}
                     <option value="{{ s[0] }}" {% if employee and employee['status'] == s[0] %}selected{% end %}>{{ s[1] }}</option>
                     {% end %}

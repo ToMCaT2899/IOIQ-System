@@ -4,20 +4,7 @@ import tornado.web
 from app.models.user import UserRepository
 from app.models.role import RoleRepository
 from app.models.function import FunctionRepository
-
-
-def _get_current_user(handler):
-    """获取当前登录用户"""
-    user = handler.get_secure_cookie("admin_user")
-    return user.decode("utf-8") if isinstance(user, bytes) else (user or "")
-
-
-def _require_login(handler):
-    """检查登录状态，未登录则重定向"""
-    if not _get_current_user(handler):
-        handler.redirect("/admin/login")
-        return False
-    return True
+from app.utils.auth import require_admin, get_username
 
 
 def _int_arg(handler, name: str, default: int = 0) -> int:
@@ -33,14 +20,14 @@ def _int_arg(handler, name: str, default: int = 0) -> int:
 
 class FuncListHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
         result = FunctionRepository.paginate(page=page, page_size=20, keyword=keyword)
         total_pages = (result["total"] + 19) // 20
         self.render(
             "admin/func_list.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="functions",
             **result,
             total_pages=total_pages,
@@ -50,11 +37,11 @@ class FuncListHandler(tornado.web.RequestHandler):
 
 class FuncAddHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         all_funcs = FunctionRepository.get_all(order_by_sort=True)
         self.render(
             "admin/func_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="functions",
             func=None,
             all_funcs=all_funcs,
@@ -62,7 +49,7 @@ class FuncAddHandler(tornado.web.RequestHandler):
         )
 
     def post(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         parent_id = _int_arg(self, "parent_id", 0)
         name = self.get_body_argument("name", "").strip()
         code = self.get_body_argument("code", "").strip()
@@ -76,7 +63,7 @@ class FuncAddHandler(tornado.web.RequestHandler):
 
 class FuncEditHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         func_id = _int_arg(self, "id")
         func = FunctionRepository.get_by_id(func_id)
         if not func:
@@ -85,7 +72,7 @@ class FuncEditHandler(tornado.web.RequestHandler):
         all_funcs = FunctionRepository.get_all(order_by_sort=True)
         self.render(
             "admin/func_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="functions",
             func=func,
             all_funcs=all_funcs,
@@ -93,7 +80,7 @@ class FuncEditHandler(tornado.web.RequestHandler):
         )
 
     def post(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         func_id = _int_arg(self, "id")
         parent_id = _int_arg(self, "parent_id", 0)
         name = self.get_body_argument("name", "").strip()
@@ -108,7 +95,7 @@ class FuncEditHandler(tornado.web.RequestHandler):
 
 class FuncDeleteHandler(tornado.web.RequestHandler):
     def post(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         func_id = _int_arg(self, "id")
         FunctionRepository.delete(func_id)
         self.redirect("/admin/functions")
@@ -118,14 +105,14 @@ class FuncDeleteHandler(tornado.web.RequestHandler):
 
 class RoleListHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
         result = RoleRepository.paginate(page=page, page_size=20, keyword=keyword)
         total_pages = (result["total"] + 19) // 20
         self.render(
             "admin/role_list.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="roles",
             **result,
             total_pages=total_pages,
@@ -135,11 +122,11 @@ class RoleListHandler(tornado.web.RequestHandler):
 
 class RoleAddHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         func_tree = FunctionRepository.get_tree()
         self.render(
             "admin/role_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="roles",
             role=None,
             func_tree=func_tree,
@@ -148,7 +135,7 @@ class RoleAddHandler(tornado.web.RequestHandler):
         )
 
     def post(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         name = self.get_body_argument("name", "").strip()
         description = self.get_body_argument("description", "").strip()
         function_ids = [int(fid) for fid in self.get_arguments("function_ids")]
@@ -161,7 +148,7 @@ class RoleAddHandler(tornado.web.RequestHandler):
 
 class RoleEditHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         role_id = _int_arg(self, "id")
         role = RoleRepository.get_by_id(role_id)
         if not role:
@@ -171,7 +158,7 @@ class RoleEditHandler(tornado.web.RequestHandler):
         checked_ids = set(RoleRepository.get_function_ids(role_id)) if role else set()
         self.render(
             "admin/role_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="roles",
             role=role,
             func_tree=func_tree,
@@ -180,7 +167,7 @@ class RoleEditHandler(tornado.web.RequestHandler):
         )
 
     def post(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         role_id = _int_arg(self, "id")
         role = RoleRepository.get_by_id(role_id)
         if role and role["is_system"] == 1:
@@ -197,7 +184,7 @@ class RoleEditHandler(tornado.web.RequestHandler):
 
 class RoleDeleteHandler(tornado.web.RequestHandler):
     def post(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         role_id = _int_arg(self, "id")
         role = RoleRepository.get_by_id(role_id)
         if role and role["is_system"] == 1:
@@ -211,7 +198,7 @@ class RoleDeleteHandler(tornado.web.RequestHandler):
 
 class UserListHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
         offset = (page - 1) * 20
@@ -234,7 +221,7 @@ class UserListHandler(tornado.web.RequestHandler):
         total_pages = (total + 19) // 20
         self.render(
             "admin/user_list.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="users",
             list=rows, total=total, page=page, page_size=20,
             total_pages=total_pages,
@@ -244,11 +231,11 @@ class UserListHandler(tornado.web.RequestHandler):
 
 class UserAddHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         roles = RoleRepository.get_all()
         self.render(
             "admin/user_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="users",
             user=None,
             roles=roles,
@@ -256,7 +243,7 @@ class UserAddHandler(tornado.web.RequestHandler):
         )
 
     def post(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         username = self.get_body_argument("username", "").strip()
         password = self.get_body_argument("password", "").strip()
         role_id = _int_arg(self, "role_id") or None
@@ -273,7 +260,7 @@ class UserAddHandler(tornado.web.RequestHandler):
 
 class UserEditHandler(tornado.web.RequestHandler):
     def get(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         user_id = _int_arg(self, "id")
         from app.models.db import get_connection
         with get_connection() as conn:
@@ -284,7 +271,7 @@ class UserEditHandler(tornado.web.RequestHandler):
         roles = RoleRepository.get_all()
         self.render(
             "admin/user_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="users",
             user=user,
             roles=roles,
@@ -292,7 +279,7 @@ class UserEditHandler(tornado.web.RequestHandler):
         )
 
     def post(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         user_id = _int_arg(self, "id")
         username = self.get_body_argument("username", "").strip()
         role_id = _int_arg(self, "role_id") or None
@@ -317,7 +304,7 @@ class UserEditHandler(tornado.web.RequestHandler):
 
 class UserDeleteHandler(tornado.web.RequestHandler):
     def post(self):
-        if not _require_login(self): return
+        if not require_admin(self): return
         user_id = _int_arg(self, "id")
         # 不允许删除 admin
         from app.models.db import get_connection

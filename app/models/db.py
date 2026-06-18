@@ -734,3 +734,35 @@ def seed_roles_and_functions():
                         (admin_role["id"], func["id"])
                     )
         conn.commit()
+
+
+def seed_skills():
+    """初始化内置 AI 技能数据"""
+    with get_connection() as conn:
+        conn.execute("SELECT COUNT(*) AS cnt FROM ai_skills")
+        skills = [
+            ("天气查询", "查询指定城市的实时天气和未来预报", "生活服务",
+             '["天气","气温","下雨","晴天"]', 0, "", "你是一个天气查询助手，请根据用户输入的城市名返回天气信息。", "enabled", "fa-cloud-sun", "1.0"),
+            ("音乐推荐", "根据心情或场景推荐音乐", "生活服务",
+             '["音乐","歌曲","推荐","听歌"]', 0, "", "你是一个音乐推荐助手，请根据用户描述推荐合适的音乐。", "enabled", "fa-music", "1.0"),
+            ("SQL问数", "将自然语言转换为 SQL 查询数据库", "数据分析",
+             '["查询","统计","SQL","数据"]', 0, "", "你是一个SQL查询助手，将用户的自然语言问题转换为SQL查询语句。", "enabled", "fa-database", "1.0"),
+            ("文本翻译", "多语言翻译助手", "办公效率",
+             '["翻译","translate","英文","中文"]', 0, "", "你是一个翻译助手，准确地将用户输入的文本翻译为目标语言。", "enabled", "fa-language", "1.0"),
+            ("代码生成", "根据需求描述生成代码", "开发工具",
+             '["代码","编程","code","写一个"]', 0, "", "你是一个代码生成助手，根据用户需求编写代码。", "enabled", "fa-code", "1.0"),
+            ("周报生成", "根据工作内容自动生成周报", "办公效率",
+             '["周报","工作总结","汇报"]', 0, "", "你是一个周报生成助手，将用户的工作内容整理为结构化周报。", "enabled", "fa-file-alt", "1.0"),
+            ("智能摘要", "对长文本生成摘要", "文本处理",
+             '["摘要","总结","概括"]', 0, "", "你是一个文本摘要助手，将长文本压缩为简洁摘要。", "enabled", "fa-file-lines", "1.0"),
+            ("数据分析", "对输入的数据进行多维度分析", "数据分析",
+             '["分析","数据","报表","图表"]', 0, "", "你是一个数据分析助手，对输入的数据进行专业分析。", "enabled", "fa-chart-pie", "1.0"),
+        ]
+        for name, desc, cat, keywords, engine_id, model, prompt, status, icon, ver in skills:
+            conn.execute(
+                "INSERT OR IGNORE INTO ai_skills (name, description, category, trigger_keywords, "
+                "model_engine_id, model_name, prompt_template, status, icon, version) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (name, desc, cat, keywords, engine_id, model, prompt, status, icon, ver)
+            )
+        conn.commit()

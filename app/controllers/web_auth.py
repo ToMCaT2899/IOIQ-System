@@ -3,6 +3,7 @@
 import tornado.web
 from app.models.user import UserRepository
 from app.models.db import get_connection
+from app.utils.auth import is_admin
 
 
 class WebLoginHandler(tornado.web.RequestHandler):
@@ -20,18 +21,9 @@ class WebLoginHandler(tornado.web.RequestHandler):
             return
 
         if UserRepository.verify_user(username, password):
-            # 检查用户角色
-            with get_connection() as conn:
-                user = conn.execute(
-                    "SELECT u.*, r.name AS role_name FROM users u LEFT JOIN roles r ON u.role_id=r.id WHERE u.username=?",
-                    (username,)
-                ).fetchone()
-
             self.set_secure_cookie("admin_user", username)
-
-            role_name = user["role_name"] if user else ""
             # 超级管理员 / 普通管理员 → 后台管理
-            if role_name in ("超级管理员", "普通管理员"):
+            if is_admin(username):
                 self.redirect("/admin/index")
             else:
                 self.redirect("/chat")

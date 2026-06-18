@@ -4,18 +4,9 @@ import json
 import tornado.web
 
 from app.models.web_search_log import WebSearchLogRepository
+from app.utils.auth import require_admin, get_username
 
 
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _int_arg(handler, key, default=0):
@@ -29,7 +20,7 @@ class SearchLogHandler(tornado.web.RequestHandler):
     """搜索日志列表"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
@@ -47,7 +38,7 @@ class SearchLogHandler(tornado.web.RequestHandler):
 
         self.render(
             "admin/search_logs.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="search_enhance",
             **result,
             total_pages=total_pages,
@@ -61,7 +52,7 @@ class SearchLogClearHandler(tornado.web.RequestHandler):
     """清空搜索日志"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         WebSearchLogRepository.clear()
         self.redirect("/admin/search-logs")
@@ -71,7 +62,7 @@ class SearchLogExportHandler(tornado.web.RequestHandler):
     """导出搜索日志 JSON"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         result = WebSearchLogRepository.paginate(page=1, page_size=50000)
         data = []
@@ -95,7 +86,7 @@ class SearchCacheClearHandler(tornado.web.RequestHandler):
     """清除搜索缓存"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         from app.services.web_search import clear_cache
         clear_cache()
@@ -106,7 +97,7 @@ class SearchTestHandler(tornado.web.RequestHandler):
     """搜索测试页 — 直接调用搜索 API 查看结果"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         query = self.get_argument("q", "").strip()
         result = None
@@ -119,7 +110,7 @@ class SearchTestHandler(tornado.web.RequestHandler):
                 error = str(e)
         self.render(
             "admin/search_test.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="search_enhance",
             query=query,
             result=result,

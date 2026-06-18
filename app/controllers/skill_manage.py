@@ -8,18 +8,9 @@ from app.models.ai_skill import (
     refresh_skill_cache, get_all_skills_from_cache,
 )
 from app.models.model_engine import ModelEngineRepository
+from app.utils.auth import require_admin, get_username
 
 
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _int_arg(handler, key, default=0):
@@ -33,7 +24,7 @@ class SkillListHandler(tornado.web.RequestHandler):
     """技能管理列表页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
@@ -54,7 +45,7 @@ class SkillListHandler(tornado.web.RequestHandler):
         result["list"] = parsed
         self.render(
             "admin/skill_list.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="skills",
             **result,
             total_pages=total_pages,
@@ -69,13 +60,13 @@ class SkillAddHandler(tornado.web.RequestHandler):
     """新增技能"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         models = ModelEngineRepository.get_all()
         categories = AiSkillRepository.get_categories()
         self.render(
             "admin/skill_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="skills",
             skill=None,
             is_add=True,
@@ -84,7 +75,7 @@ class SkillAddHandler(tornado.web.RequestHandler):
         )
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         name = self.get_body_argument("name", "").strip()
         description = self.get_body_argument("description", "").strip()
@@ -110,7 +101,7 @@ class SkillEditHandler(tornado.web.RequestHandler):
     """编辑技能"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         skill_id = _int_arg(self, "id")
         skill = AiSkillRepository.get_by_id(skill_id)
@@ -121,7 +112,7 @@ class SkillEditHandler(tornado.web.RequestHandler):
         categories = AiSkillRepository.get_categories()
         self.render(
             "admin/skill_edit.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="skills",
             skill=skill,
             is_add=False,
@@ -130,7 +121,7 @@ class SkillEditHandler(tornado.web.RequestHandler):
         )
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         skill_id = _int_arg(self, "id")
         skill = AiSkillRepository.get_by_id(skill_id)
@@ -162,7 +153,7 @@ class SkillDeleteHandler(tornado.web.RequestHandler):
     """删除技能"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         skill_id = _int_arg(self, "id")
         AiSkillRepository.delete(skill_id)
@@ -173,7 +164,7 @@ class SkillToggleHandler(tornado.web.RequestHandler):
     """切换技能启用/停用"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         skill_id = _int_arg(self, "id")
         status = self.get_body_argument("status", "enabled").strip()
@@ -185,7 +176,7 @@ class SkillRefreshHandler(tornado.web.RequestHandler):
     """手动热更新技能缓存"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         refresh_skill_cache()
         count = len(get_all_skills_from_cache())
@@ -196,7 +187,7 @@ class SkillStatsHandler(tornado.web.RequestHandler):
     """技能调用统计页"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         skill_id = _int_arg(self, "id")
         skill = None
@@ -207,7 +198,7 @@ class SkillStatsHandler(tornado.web.RequestHandler):
         all_skills = AiSkillRepository.get_all()
         self.render(
             "admin/skill_stats.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="skills",
             skill=skill,
             stats=stats,
@@ -220,13 +211,13 @@ class SkillMarketHandler(tornado.web.RequestHandler):
     """技能市场 — 预留接口"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         all_skills = AiSkillRepository.get_all(enabled_only=True)
         stats = AiSkillRepository.get_stats()
         self.render(
             "admin/skill_market.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="skills",
             skills=all_skills,
             stats=stats,

@@ -3,20 +3,11 @@
 import tornado.web
 
 from app.models.watch_result import WatchResultRepository
+from app.utils.auth import require_admin, get_username
 from app.models.deep_result import DeepResultRepository
 from app.models.db import get_connection
 
 
-def _require_login(handler):
-    if not handler.get_secure_cookie("admin_user"):
-        handler.redirect("/admin/login")
-        return False
-    return True
-
-
-def _get_current_user(handler):
-    cookie = handler.get_secure_cookie("admin_user")
-    return cookie.decode() if cookie else ""
 
 
 def _int_arg(handler, key, default=0):
@@ -30,7 +21,7 @@ class DataWarehouseListHandler(tornado.web.RequestHandler):
     """数据仓库列表页 — 支持关键词/数据来源/时间范围筛选"""
 
     def get(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         page = max(_int_arg(self, "page", 1), 1)
         keyword = self.get_argument("keyword", "").strip()
@@ -84,7 +75,7 @@ class DataWarehouseListHandler(tornado.web.RequestHandler):
 
         self.render(
             "admin/data_warehouse.html",
-            username=_get_current_user(self),
+            username=get_username(self),
             current_page="warehouse",
             list=rows, total=total, page=page, page_size=page_size,
             total_pages=total_pages,
@@ -99,7 +90,7 @@ class DataWarehouseDeleteHandler(tornado.web.RequestHandler):
     """单条删除"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         item_id = _int_arg(self, "id")
         with get_connection() as conn:
@@ -112,7 +103,7 @@ class DataWarehouseBatchDeleteHandler(tornado.web.RequestHandler):
     """批量删除"""
 
     def post(self):
-        if not _require_login(self):
+        if not require_admin(self):
             return
         ids_str = self.get_body_argument("ids", "").strip()
         if ids_str:
