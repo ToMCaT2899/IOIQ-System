@@ -245,14 +245,15 @@ class EmployeeChatSSEHandler(tornado.web.RequestHandler):
     async def post(self):
         if not require_admin(self):
             return
-        employee_id = _int_arg(self, "id")
+
+        body = json.loads(self.request.body or "{}")
+        employee_id = body.get("id", 0)
         employee = DigitalEmployeeRepository.get_by_id(employee_id)
         if not employee:
             self.set_status(404)
             self.finish()
             return
 
-        body = json.loads(self.request.body or "{}")
         user_message = body.get("message", "").strip()
         if not user_message:
             self.set_status(400)
@@ -271,6 +272,18 @@ class EmployeeChatSSEHandler(tornado.web.RequestHandler):
         model_name = (model["model_name"] or "gpt-3.5-turbo") if model else "gpt-3.5-turbo"
 
         system_prompt = employee["system_prompt"] or f"你是 {employee['name']}，{employee['role_name']}。{employee['greeting']}"
+
+        # 注入绑定的技能 prompt
+        skill_ids = _resolve_skill_ids(employee["skills"] or "")
+        if skill_ids:
+            skill_prompts = []
+            for sid in skill_ids:
+                skill = AiSkillRepository.get_by_id(sid)
+                if skill and skill["prompt_template"]:
+                    skill_prompts.append(f"【{skill['name']}】{skill['prompt_template']}")
+            if skill_prompts:
+                system_prompt += "\n\n你可以调用以下技能来帮助用户：\n" + "\n".join(skill_prompts)
+                system_prompt += "\n当用户的问题匹配某个技能时，请使用该技能的能力来回答。"
 
         self.set_header("Content-Type", "text/event-stream")
         self.set_header("Cache-Control", "no-cache")
