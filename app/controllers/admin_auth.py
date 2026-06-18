@@ -2,7 +2,7 @@
 
 import tornado.web
 from app.models.user import UserRepository
-from app.models.db import init_db, seed_admin
+from app.models.db import init_db, seed_admin, get_connection
 
 
 class AdminLoginHandler(tornado.web.RequestHandler):
@@ -20,6 +20,19 @@ class AdminLoginHandler(tornado.web.RequestHandler):
             return
 
         if UserRepository.verify_user(username, password):
+            # 检查用户角色，仅管理员可登录后台
+            with get_connection() as conn:
+                user = conn.execute(
+                    "SELECT r.name AS role_name FROM users u "
+                    "LEFT JOIN roles r ON u.role_id = r.id "
+                    "WHERE u.username = ?",
+                    (username,)
+                ).fetchone()
+            role_name = user["role_name"] if user else ""
+            if role_name not in ("超级管理员", "普通管理员"):
+                self.render("admin/login.html", error="该账号无后台管理权限，请使用管理员账号登录")
+                return
+
             self.set_secure_cookie("admin_user", username)
             self.redirect("/admin/index")
         else:
@@ -28,7 +41,7 @@ class AdminLoginHandler(tornado.web.RequestHandler):
 
 import json
 from app.models.dashboard_screen import DashboardRepository
-from app.models.db import get_connection, get_engine
+from app.models.db import get_engine
 
 
 class AdminIndexHandler(tornado.web.RequestHandler):

@@ -80,6 +80,12 @@
         .form-floating {
             margin-bottom: 16px;
         }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            font-size: 13px; color: #475569; font-weight: 600; margin-bottom: 6px; display: block;
+        }
         .form-control {
             border-radius: 10px;
             border: 1.5px solid #e2e8f0;
@@ -209,22 +215,27 @@
             <div class="welcome-subtitle">请输入您的账号信息以访问管理后台</div>
 
             <form id="loginForm" action="/admin/login" method="post">
-                <div class="form-floating">
-                    <input type="text" class="form-control" id="username" name="username" placeholder="用户名" required autocomplete="username">
+                <div class="form-group">
                     <label for="username"><i class="fas fa-user me-2"></i>用户名</label>
+                    <input type="text" class="form-control" id="username" name="username" placeholder="请输入用户名" required autocomplete="username">
                 </div>
 
-                <div class="form-floating">
-                    <input type="password" class="form-control" id="password" name="password" placeholder="密码" required autocomplete="current-password">
+                <div class="form-group">
                     <label for="password"><i class="fas fa-lock me-2"></i>密码</label>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required autocomplete="current-password">
                 </div>
 
                 {% if error %}
                 <div class="error-msg" style="display:block;">{{ error }}</div>
                 {% end %}
 
-                <button type="submit" class="btn-login mt-4">登 录</button>
+                <button type="submit" class="btn-login mt-4">
+                    <i class="fas fa-sign-in-alt me-2"></i>登录
+                </button>
             </form>
+            <div style="text-align:center; margin-top:16px; font-size:13px; color:#94a3b8;">
+                <a href="/login" style="color:#4a6cf7; text-decoration:none;">返回用户端</a>
+            </div>
         </div>
     </div>
 
@@ -245,11 +256,16 @@
 
 <script src="/static/bootstrap-5.3.8-dist/js/bootstrap.bundle.min.js"></script>
 <script>
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-    var btn = this.querySelector('.btn-login');
-    btn.textContent = '登 录 中...';
-    btn.disabled = true;
-});
+(function(){
+    var form = document.getElementById('loginForm');
+    var btn = form.querySelector('.btn-login');
+    var origHTML = btn.innerHTML;
+    form.addEventListener('submit', function() {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>登录中...';
+        btn.disabled = true;
+    });
+    // 如果有错误返回，按钮会被重新渲染，不需要恢复
+})();
 </script>
 </body>
 </html>

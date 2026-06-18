@@ -145,27 +145,39 @@
         <div class="login-form-wrapper">
             <h2>欢迎回来</h2>
             <p class="sub">登录您的账户，开始智能问数之旅</p>
-            <form method="post">
+            <form method="post" action="/login" id="loginForm">
                 <div class="form-group">
                     <label>用户名</label>
-                    <input type="text" name="username" class="form-control" placeholder="请输入用户名" required>
+                    <input type="text" name="username" class="form-control" placeholder="请输入用户名" required autocomplete="username">
                 </div>
                 <div class="form-group">
                     <label>密码</label>
-                    <input type="password" name="password" class="form-control" placeholder="请输入密码" required>
+                    <input type="password" name="password" class="form-control" placeholder="请输入密码" required autocomplete="current-password">
                 </div>
                 {% if error %}
                 <div class="error-msg">{{ error }}</div>
                 {% end %}
                 <button type="submit" class="btn-login" style="margin-top: 10px;">
-                    <i class="fas fa-sign-in-alt me-2"></i>登 录
+                    <i class="fas fa-sign-in-alt me-2"></i>登录
                 </button>
             </form>
             <div class="register-link">
                 还没有账户？<a href="/register">立即注册</a>
             </div>
+            <div style="text-align:center; margin-top:8px; font-size:13px; color:#94a3b8;">
+                <a href="/admin/login" style="color:#4a6cf7; text-decoration:none;">管理后台入口</a>
+            </div>
         </div>
-    </div>
 </div>
+<script>
+(function(){
+    var form = document.getElementById('loginForm');
+    var btn = form.querySelector('.btn-login');
+    form.addEventListener('submit', function() {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>登录中...';
+        btn.disabled = true;
+    });
+})();
+</script>
 </body>
 </html>
