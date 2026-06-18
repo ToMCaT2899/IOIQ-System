@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-header">
     <h2>控制台</h2>
-    <p>欢迎使用 IOIQ 智能瞭望与智能问数系统管理后台</p>
+    <p>欢迎使用 IOIQ 智能瞭望与智能问数系统管理后台 <span id="refreshTag" style="font-size:11px;color:#94a3b8;margin-left:8px;"></span></p>
 </div>
 
 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
@@ -13,7 +13,7 @@
         <div style="display:flex; align-items:center; justify-content:space-between;">
             <div>
                 <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">智能瞭望</div>
-                <div style="font-size:28px; font-weight:700; color:#1e293b;">--</div>
+                <div style="font-size:28px; font-weight:700; color:#1e293b;" id="statWatch">--</div>
             </div>
             <div style="width:48px; height:48px; background:#eef2ff; border-radius:12px; display:flex; align-items:center; justify-content:center;">
                 <i class="fas fa-eye" style="color:#4a6cf7; font-size:20px;"></i>
@@ -25,7 +25,7 @@
         <div style="display:flex; align-items:center; justify-content:space-between;">
             <div>
                 <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">自助问数</div>
-                <div style="font-size:28px; font-weight:700; color:#1e293b;">--</div>
+                <div style="font-size:28px; font-weight:700; color:#1e293b;" id="statData">--</div>
             </div>
             <div style="width:48px; height:48px; background:#f0fdf4; border-radius:12px; display:flex; align-items:center; justify-content:center;">
                 <i class="fas fa-database" style="color:#22c55e; font-size:20px;"></i>
@@ -37,7 +37,7 @@
         <div style="display:flex; align-items:center; justify-content:space-between;">
             <div>
                 <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">智能对话</div>
-                <div style="font-size:28px; font-weight:700; color:#1e293b;">--</div>
+                <div style="font-size:28px; font-weight:700; color:#1e293b;" id="statChat">--</div>
             </div>
             <div style="width:48px; height:48px; background:#fef3c7; border-radius:12px; display:flex; align-items:center; justify-content:center;">
                 <i class="fas fa-comments" style="color:#f59e0b; font-size:20px;"></i>
@@ -49,7 +49,7 @@
         <div style="display:flex; align-items:center; justify-content:space-between;">
             <div>
                 <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">舆情分析</div>
-                <div style="font-size:28px; font-weight:700; color:#1e293b;">--</div>
+                <div style="font-size:28px; font-weight:700; color:#1e293b;" id="statSentiment">--</div>
             </div>
             <div style="width:48px; height:48px; background:#fce7f3; border-radius:12px; display:flex; align-items:center; justify-content:center;">
                 <i class="fas fa-chart-line" style="color:#ec4899; font-size:20px;"></i>
@@ -72,10 +72,36 @@
         <h3 style="font-size:15px; font-weight:600; color:#1e293b; margin-bottom:16px;"><i class="fas fa-info-circle me-2" style="color:#4a6cf7;"></i>系统信息</h3>
         <table style="width:100%; font-size:13px; color:#475569;">
             <tr><td style="padding:8px 0; color:#94a3b8;">系统名称</td><td>IOIQ 智能瞭望与智能问数系统</td></tr>
-            <tr><td style="padding:8px 0; color:#94a3b8;">技术框架</td><td>Tornado + SQLite3</td></tr>
+            <tr><td style="padding:8px 0; color:#94a3b8;">数据库引擎</td><td><span id="dbEngine">--</span></td></tr>
             <tr><td style="padding:8px 0; color:#94a3b8;">当前用户</td><td>{{ username }}</td></tr>
             <tr><td style="padding:8px 0; color:#94a3b8;">服务端口</td><td>10086</td></tr>
         </table>
     </div>
 </div>
+
+<script>
+(function(){
+    function loadStats(){
+        fetch('/admin/stats', {credentials:'same-origin'})
+            .then(function(r){ return r.json(); })
+            .then(function(resp){
+                if (!resp.ok) return;
+                var d = resp.data;
+                document.getElementById('statWatch').textContent    = d.watch_sources;
+                document.getElementById('statData').textContent     = d.data_entries;
+                document.getElementById('statChat').textContent     = d.chat_sessions;
+                document.getElementById('statSentiment').textContent= d.sentiment_analysis;
+                document.getElementById('dbEngine').textContent     = d.engine || '--';
+                var now = new Date();
+                var ts = now.getHours().toString().padStart(2,'0') + ':' +
+                         now.getMinutes().toString().padStart(2,'0') + ':' +
+                         now.getSeconds().toString().padStart(2,'0');
+                document.getElementById('refreshTag').textContent = '(实时更新 ' + ts + ')';
+            })
+            .catch(function(){});
+    }
+    loadStats();
+    setInterval(loadStats, 15000);
+})();
+</script>
 {% end %}

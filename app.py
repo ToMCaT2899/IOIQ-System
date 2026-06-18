@@ -9,7 +9,7 @@ from tornado.httpserver import HTTPServer
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # 控制器导入
-from app.controllers.admin_auth import AdminLoginHandler, AdminIndexHandler, AdminLogoutHandler
+from app.controllers.admin_auth import AdminLoginHandler, AdminIndexHandler, AdminLogoutHandler, AdminStatsHandler
 from app.controllers.admin_manage import (
     FuncListHandler, FuncAddHandler, FuncEditHandler, FuncDeleteHandler,
     RoleListHandler, RoleAddHandler, RoleEditHandler, RoleDeleteHandler,
@@ -109,6 +109,7 @@ def create_app():
             # 后台认证路由
             ("/admin/login", AdminLoginHandler),
             ("/admin/index", AdminIndexHandler),
+            ("/admin/stats", AdminStatsHandler),
             ("/admin/logout", AdminLogoutHandler),
             # 功能管理路由
             ("/admin/functions", FuncListHandler),

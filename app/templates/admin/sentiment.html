@@ -116,9 +116,11 @@
 <div class="chart-card" style="margin-bottom:16px;">
     <h5><i class="fas fa-cloud"></i> 热门关键词</h5>
     <div class="keywords-cloud">
+        {% set kw_idx = 0 %}
         {% if hot_keywords %}
             {% for kw in hot_keywords[:20] %}
-                <span class="keyword-tag{% if loop.index <= 3 %} hot{% elif loop.index <= 8 %} warm{% end %}">
+                {% set kw_idx = kw_idx + 1 %}
+                <span class="keyword-tag{% if kw_idx <= 3 %} hot{% elif kw_idx <= 8 %} warm{% end %}">
                     {{ kw['word'] }} ({{ kw['count'] }})
                 </span>
             {% end %}
