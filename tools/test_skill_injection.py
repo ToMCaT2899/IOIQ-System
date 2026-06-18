@@ -43,13 +43,18 @@ def build_system_prompt(employee: dict) -> str:
     skill_ids = _resolve_skill_ids(employee.get("skills") or "")
     if skill_ids:
         skill_prompts = []
+        skill_summary_list = []
         for sid in skill_ids:
             skill = AiSkillRepository.get_by_id(sid)
             if skill and skill["prompt_template"]:
                 skill_prompts.append(f"【{skill['name']}】{skill['prompt_template']}")
+                desc = (skill["description"] or "").strip()
+                skill_summary_list.append(f"- {skill['name']}" + (f"：{desc}" if desc else ""))
         if skill_prompts:
-            system_prompt += "\n\n你可以调用以下技能来帮助用户：\n" + "\n".join(skill_prompts)
-            system_prompt += "\n当用户的问题匹配某个技能时，请使用该技能的能力来回答。"
+            system_prompt += "\n\n📋 你拥有以下技能能力：\n" + "\n".join(skill_summary_list)
+            system_prompt += "\n\n📝 各技能详细行为定义：\n" + "\n".join(skill_prompts)
+            system_prompt += "\n\n当用户询问\"你有什么能力\"、\"你会什么\"、\"你的技能\"等问题时，请列出上述技能名称及其简要说明。"
+            system_prompt += "\n当用户的问题匹配某个技能时，请使用该技能定义的角色和能力来回答。"
 
     return system_prompt
 
@@ -104,18 +109,18 @@ employee = DigitalEmployeeRepository.get_by_id(employee_id)
 prompt = build_system_prompt(dict(employee))
 test("TC-1: system prompt 包含员工角色设定",
      "你是一个测试助理" in prompt)
-test("TC-2: system prompt 包含技能引导文字",
-     "你可以调用以下技能来帮助用户" in prompt)
-test("TC-3: system prompt 包含天气查询技能名称",
-     "TEST_天气查询" in prompt)
+test("TC-2: system prompt 包含技能能力列表标题",
+     "📋 你拥有以下技能能力" in prompt)
+test("TC-3: system prompt 包含天气查询技能名称（含描述）",
+     "TEST_天气查询" in prompt and "测试天气查询技能" in prompt)
 test("TC-4: system prompt 包含天气查询技能模板",
      "城市+温度+天气状况" in prompt)
 test("TC-5: system prompt 包含翻译助手技能名称",
      "TEST_翻译助手" in prompt)
 test("TC-6: system prompt 包含翻译助手技能模板",
      "将用户输入翻译为目标语言" in prompt)
-test("TC-7: system prompt 包含技能使用引导",
-     "当用户的问题匹配某个技能时" in prompt)
+test("TC-7: system prompt 包含技能自述引导",
+     "当用户询问" in prompt and "你有什么能力" in prompt)
 
 # TC-8: 员工无技能 → 不包含技能引导
 no_skill_id = DigitalEmployeeRepository.create(
@@ -127,8 +132,8 @@ no_skill_id = DigitalEmployeeRepository.create(
 )
 no_skill_employee = DigitalEmployeeRepository.get_by_id(no_skill_id)
 no_skill_prompt = build_system_prompt(dict(no_skill_employee))
-test("TC-8: 无技能员工不包含技能引导文字",
-     "你可以调用以下技能" not in no_skill_prompt)
+test("TC-8: 无技能员工不包含技能能力列表",
+     "📋 你拥有以下技能能力" not in no_skill_prompt)
 
 # TC-9: 旧格式 skills（字符串数组）→ 不注入
 old_fmt_id = DigitalEmployeeRepository.create(
@@ -141,7 +146,7 @@ old_fmt_id = DigitalEmployeeRepository.create(
 old_emp = DigitalEmployeeRepository.get_by_id(old_fmt_id)
 old_prompt = build_system_prompt(dict(old_emp))
 test("TC-9: 旧格式技能名称不注入（兼容）",
-     "你可以调用以下技能" not in old_prompt)
+     "📋 你拥有以下技能能力" not in old_prompt)
 
 # TC-10: 员工无 system_prompt → 使用默认提示词
 default_id = DigitalEmployeeRepository.create(
@@ -176,7 +181,7 @@ empty_id = DigitalEmployeeRepository.create(
 empty_emp = DigitalEmployeeRepository.get_by_id(empty_id)
 empty_prompt = build_system_prompt(dict(empty_emp))
 test("TC-13: skills 空字符串不注入",
-     "你可以调用以下技能" not in empty_prompt)
+     "📋 你拥有以下技能能力" not in empty_prompt)
 
 # TC-14: skills 为 None → 不注入
 none_id = DigitalEmployeeRepository.create(
@@ -189,7 +194,7 @@ none_id = DigitalEmployeeRepository.create(
 none_emp = DigitalEmployeeRepository.get_by_id(none_id)
 none_prompt = build_system_prompt(dict(none_emp))
 test("TC-14: skills=None 不注入",
-     "你可以调用以下技能" not in none_prompt)
+     "📋 你拥有以下技能能力" not in none_prompt)
 
 # ---- 清理测试数据 ----
 print("\n[清理] 删除测试数据...")

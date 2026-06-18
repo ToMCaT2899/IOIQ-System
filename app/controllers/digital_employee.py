@@ -277,13 +277,18 @@ class EmployeeChatSSEHandler(tornado.web.RequestHandler):
         skill_ids = _resolve_skill_ids(employee["skills"] or "")
         if skill_ids:
             skill_prompts = []
+            skill_summary_list = []  # 简洁能力列表，供模型自我描述
             for sid in skill_ids:
                 skill = AiSkillRepository.get_by_id(sid)
                 if skill and skill["prompt_template"]:
                     skill_prompts.append(f"【{skill['name']}】{skill['prompt_template']}")
+                    desc = (skill["description"] or "").strip()
+                    skill_summary_list.append(f"- {skill['name']}" + (f"：{desc}" if desc else ""))
             if skill_prompts:
-                system_prompt += "\n\n你可以调用以下技能来帮助用户：\n" + "\n".join(skill_prompts)
-                system_prompt += "\n当用户的问题匹配某个技能时，请使用该技能的能力来回答。"
+                system_prompt += "\n\n📋 你拥有以下技能能力：\n" + "\n".join(skill_summary_list)
+                system_prompt += "\n\n📝 各技能详细行为定义：\n" + "\n".join(skill_prompts)
+                system_prompt += "\n\n当用户询问\"你有什么能力\"、\"你会什么\"、\"你的技能\"等问题时，请列出上述技能名称及其简要说明。"
+                system_prompt += "\n当用户的问题匹配某个技能时，请使用该技能定义的角色和能力来回答。"
 
         self.set_header("Content-Type", "text/event-stream")
         self.set_header("Cache-Control", "no-cache")
