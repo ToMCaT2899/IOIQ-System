@@ -1,0 +1,334 @@
+{% extends "admin/base.html" %}
+{% block title %}智能舆情{% end %}
+
+{% block content %}
+<style>
+.sentiment-toolbar { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px; padding:14px 16px; background:#fff; border:1px solid #e5e7eb; border-radius:8px; }
+.sentiment-toolbar .form-control { width:150px; }
+.sentiment-toolbar .btn { white-space:nowrap; }
+.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
+.stat-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px 20px; display:flex; align-items:center; gap:14px; transition:box-shadow 0.2s; }
+.stat-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.06); }
+.stat-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; }
+.stat-icon.positive { background:#d1fae5; color:#059669; }
+.stat-icon.neutral { background:#e0e7ff; color:#4f46e5; }
+.stat-icon.negative { background:#fee2e2; color:#dc2626; }
+.stat-icon.alert { background:#fef3c7; color:#d97706; }
+.stat-label { font-size:12px; color:#6b7280; margin-bottom:2px; }
+.stat-value { font-size:22px; font-weight:700; color:#1f2937; }
+.charts-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+.chart-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px; }
+.chart-card h5 { font-size:14px; font-weight:600; color:#374151; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.chart-card h5 i { color:#6b7280; font-size:13px; }
+.chart-box { position:relative; height:260px; }
+.chart-box canvas { width:100% !important; height:100% !important; }
+.keywords-cloud { display:flex; flex-wrap:wrap; gap:6px; }
+.keyword-tag { display:inline-block; padding:3px 10px; background:#f1f5f9; border-radius:20px; font-size:12px; color:#475569; transition:all 0.15s; }
+.keyword-tag:hover { background:#e0e7ff; color:#4f46e5; }
+.keyword-tag.hot { background:#fee2e2; color:#dc2626; font-weight:600; }
+.keyword-tag.warm { background:#fef3c7; color:#d97706; font-weight:500; }
+.table-container { background:#fff; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; margin-bottom:16px; }
+.table-container table { margin-bottom:0; }
+.sentiment-badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:500; }
+.sentiment-badge.positive { background:#d1fae5; color:#065f46; }
+.sentiment-badge.neutral { background:#e0e7ff; color:#3730a3; }
+.sentiment-badge.negative { background:#fee2e2; color:#991b1b; }
+.risk-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+.risk-badge.low { background:#d1fae5; color:#065f46; }
+.risk-badge.medium { background:#fef3c7; color:#92400e; }
+.risk-badge.high { background:#fee2e2; color:#991b1b; }
+.risk-badge.critical { background:#fce7f3; color:#9b2c2c; }
+.analyze-panel { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px; margin-bottom:16px; display:flex; align-items:center; gap:14px; }
+.analyze-panel label { font-size:13px; color:#374151; font-weight:500; white-space:nowrap; }
+.analyze-progress { display:none; margin-top:8px; }
+.analyze-log { margin-top:8px; font-size:12px; color:#6b7280; max-height:120px; overflow-y:auto; background:#f8fafc; padding:8px; border-radius:4px; display:none; }
+.empty-state { text-align:center; padding:40px; color:#9ca3af; }
+.empty-state i { font-size:48px; margin-bottom:12px; display:block; }
+</style>
+
+<div class="analyze-panel">
+    <label>数据源：</label>
+    <select class="form-control" id="analyzeSource" style="width:140px;">
+        <option value="all">全部来源</option>
+        <option value="chat">聊天消息</option>
+        <option value="watch">瞭望采集</option>
+        <option value="deep">深度采集</option>
+    </select>
+    <label>使用AI模型：</label>
+    <select class="form-control" id="analyzeModel" style="width:160px;">
+        <option value="0">规则引擎</option>
+        {% for m in handler.get_argument("models","") %}
+        {% end %}
+    </select>
+    <label>分析条数：</label>
+    <input type="number" class="form-control" id="analyzeLimit" value="30" min="5" max="100" style="width:80px;">
+    <button class="btn btn-primary" onclick="startAnalyze()"><i class="fas fa-play"></i> 执行舆情分析</button>
+    <a href="/admin/sentiment/report" class="btn" style="margin-left:auto;"><i class="fas fa-file-alt"></i> 生成报告</a>
+</div>
+<div class="analyze-log" id="analyzeLog"></div>
+
+<!-- 统计卡片 -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon positive"><i class="fas fa-smile"></i></div>
+        <div>
+            <div class="stat-label">正面舆情</div>
+            <div class="stat-value">{{ dist.get('positive', 0) }}</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon neutral"><i class="fas fa-meh"></i></div>
+        <div>
+            <div class="stat-label">中性舆情</div>
+            <div class="stat-value">{{ dist.get('neutral', 0) }}</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon negative"><i class="fas fa-frown"></i></div>
+        <div>
+            <div class="stat-label">负面舆情</div>
+            <div class="stat-value">{{ dist.get('negative', 0) }}</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon alert"><i class="fas fa-bell"></i></div>
+        <div>
+            <div class="stat-label">未读告警</div>
+            <div class="stat-value">{{ alerts_unread }}</div>
+            <a href="/admin/sentiment/alerts" style="font-size:12px;color:#4f46e5;">查看详情</a>
+        </div>
+    </div>
+</div>
+
+<!-- 图表区 -->
+<div class="charts-row">
+    <div class="chart-card">
+        <h5><i class="fas fa-chart-line"></i> 情感趋势 (14天)</h5>
+        <div class="chart-box"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+        <h5><i class="fas fa-chart-pie"></i> 风险等级分布</h5>
+        <div class="chart-box"><canvas id="riskChart"></canvas></div>
+    </div>
+</div>
+
+<!-- 关键词云 -->
+<div class="chart-card" style="margin-bottom:16px;">
+    <h5><i class="fas fa-cloud"></i> 热门关键词</h5>
+    <div class="keywords-cloud">
+        {% if hot_keywords %}
+            {% for kw in hot_keywords[:20] %}
+                <span class="keyword-tag{% if loop.index <= 3 %} hot{% elif loop.index <= 8 %} warm{% end %}">
+                    {{ kw['word'] }} ({{ kw['count'] }})
+                </span>
+            {% end %}
+        {% else %}
+            <div class="empty-state"><i class="fas fa-search"></i>暂无舆情数据，请先执行舆情分析</div>
+        {% end %}
+    </div>
+</div>
+
+<!-- 数据表格 -->
+<div class="table-container">
+    <div class="sentiment-toolbar">
+        <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <input type="text" class="form-control" name="keyword" value="{{ keyword }}" placeholder="关键词搜索..." style="width:180px;">
+            <select class="form-control" name="sentiment" style="width:120px;">
+                <option value="">全部情感</option>
+                <option value="positive" {% if sentiment_filter == 'positive' %}selected{% end %}>正面</option>
+                <option value="neutral" {% if sentiment_filter == 'neutral' %}selected{% end %}>中性</option>
+                <option value="negative" {% if sentiment_filter == 'negative' %}selected{% end %}>负面</option>
+            </select>
+            <select class="form-control" name="risk_level" style="width:110px;">
+                <option value="">全部风险</option>
+                <option value="low" {% if risk_level == 'low' %}selected{% end %}>低</option>
+                <option value="medium" {% if risk_level == 'medium' %}selected{% end %}>中</option>
+                <option value="high" {% if risk_level == 'high' %}selected{% end %}>高</option>
+                <option value="critical" {% if risk_level == 'critical' %}selected{% end %}>严重</option>
+            </select>
+            <select class="form-control" name="source_type" style="width:120px;">
+                <option value="">全部来源</option>
+                <option value="chat" {% if source_type == 'chat' %}selected{% end %}>聊天</option>
+                <option value="watch" {% if source_type == 'watch' %}selected{% end %}>瞭望</option>
+                <option value="deep" {% if source_type == 'deep' %}selected{% end %}>深度采集</option>
+            </select>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> 筛选</button>
+            <a href="/admin/sentiment" class="btn">重置</a>
+        </form>
+    </div>
+
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th style="width:50px;">ID</th>
+                <th style="width:80px;">来源</th>
+                <th>内容摘要</th>
+                <th style="width:80px;">情感</th>
+                <th style="width:70px;">得分</th>
+                <th style="width:70px;">风险</th>
+                <th style="width:80px;">热度</th>
+                <th style="width:100px;">来源用户</th>
+                <th style="width:140px;">时间</th>
+                <th style="width:60px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if list %}
+                {% for item in list %}
+                <tr>
+                    <td>{{ item['id'] }}</td>
+                    <td>
+                        {% if item['source_type'] == 'chat' %}<span class="label label-info">聊天</span>
+                        {% elif item['source_type'] == 'watch' %}<span class="label label-warning">瞭望</span>
+                        {% elif item['source_type'] == 'deep' %}<span class="label label-success">深度</span>
+                        {% else %}{{ item['source_type'] }}{% end %}
+                    </td>
+                    <td>
+                        <span title="{{ item['content'] or '' }}">{{ (item['content'] or '')[:60] }}{% if len(item['content'] or '') > 60 %}...{% end %}</span>
+                        {% if item['emotion_label'] %}
+                            <span style="font-size:11px;color:#6b7280;margin-left:6px;">[{{ item['emotion_label'] }}]</span>
+                        {% end %}
+                    </td>
+                    <td><span class="sentiment-badge {{ item['sentiment'] }}">{{ {'positive':'正面','neutral':'中性','negative':'负面'}.get(item['sentiment'], item['sentiment']) }}</span></td>
+                    <td>{{ item['sentiment_score'] }}</td>
+                    <td><span class="risk-badge {{ item['risk_level'] }}">{{ {'low':'低','medium':'中','high':'高','critical':'严重'}.get(item['risk_level'], item['risk_level']) }}</span></td>
+                    <td>{{ item['hot_value'] }}</td>
+                    <td>{{ item.get('source_user','-') }}</td>
+                    <td>{{ item['created_at'] }}</td>
+                    <td>
+                        <form action="/admin/sentiment/delete" method="post" style="display:inline;" onsubmit="return confirm('确定删除?')">
+                            <input type="hidden" name="id" value="{{ item['id'] }}">
+                            <button class="btn btn-xs btn-link text-danger" type="submit"><i class="fas fa-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% end %}
+            {% else %}
+                <tr><td colspan="10"><div class="empty-state"><i class="fas fa-inbox"></i>暂无舆情分析数据<br>请点击上方"执行舆情分析"按钮进行分析</div></td></tr>
+            {% end %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="padding:12px 16px;text-align:center;border-top:1px solid #e5e7eb;">
+        {% for p in range(1, total_pages + 1) %}
+            <a href="?page={{ p }}&keyword={{ keyword }}&sentiment={{ sentiment_filter }}&risk_level={{ risk_level }}&source_type={{ source_type }}"
+               class="btn btn-xs {% if p == page %}btn-primary{% end %}" style="margin:0 2px;">{{ p }}</a>
+        {% end %}
+    </div>
+    {% end %}
+</div>
+{% end %}
+
+{% block script %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+var trendChart, riskChart;
+
+function initCharts() {
+    fetch('/admin/sentiment/data')
+        .then(r => r.json())
+        .then(data => {
+            renderTrendChart(data.trend || []);
+            renderRiskChart(data.risk_distribution || {});
+        })
+        .catch(e => console.error('加载图表数据失败', e));
+}
+
+function renderTrendChart(trend) {
+    var ctx = document.getElementById('trendChart').getContext('2d');
+    var labels = trend.map(t => t.date);
+    var posData = trend.map(t => t.positive || 0);
+    var neuData = trend.map(t => t.neutral || 0);
+    var negData = trend.map(t => t.negative || 0);
+
+    if (trendChart) trendChart.destroy();
+    trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: '正面', data: posData, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.3, fill: true },
+                { label: '中性', data: neuData, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)', tension: 0.3, fill: true },
+                { label: '负面', data: negData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.3, fill: true },
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16, font: { size: 11 } } } },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                y: { beginAtZero: true, ticks: { font: { size: 10 } } }
+            }
+        }
+    });
+}
+
+function renderRiskChart(riskDist) {
+    var ctx = document.getElementById('riskChart').getContext('2d');
+    var labels = ['低风险', '中风险', '高风险', '严重'];
+    var values = [riskDist.low || 0, riskDist.medium || 0, riskDist.high || 0, riskDist.critical || 0];
+    var colors = ['#10b981', '#f59e0b', '#ef4444', '#991b1b'];
+
+    if (riskChart) riskChart.destroy();
+    riskChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { padding: 12, font: { size: 11 } } } }
+        }
+    });
+}
+
+function startAnalyze() {
+    var sourceType = document.getElementById('analyzeSource').value;
+    var modelId = document.getElementById('analyzeModel').value;
+    var limit = document.getElementById('analyzeLimit').value;
+    var log = document.getElementById('analyzeLog');
+
+    log.style.display = 'block';
+    log.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在执行舆情分析...';
+
+    var formData = new FormData();
+    formData.append('source_type', sourceType);
+    formData.append('model_engine_id', modelId);
+    formData.append('limit', limit);
+
+    fetch('/admin/sentiment/analyze', {
+        method: 'POST',
+        body: formData,
+    })
+    .then(response => {
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder();
+        function read() {
+            reader.read().then(({done, value}) => {
+                if (done) { log.innerHTML += '\n<span style="color:#10b981;">分析完成，正在刷新页面...</span>'; setTimeout(() => location.reload(), 1500); return; }
+                var text = decoder.decode(value, {stream: true});
+                var lines = text.split('\n');
+                lines.forEach(line => {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            var j = JSON.parse(line.slice(6));
+                            if (j.type === 'start') log.innerHTML += '\n' + j.content;
+                            else if (j.type === 'done') log.innerHTML += '\n<span style="color:#10b981;">' + j.message + '</span>';
+                            else if (j.type === 'error') log.innerHTML += '\n<span style="color:#ef4444;">错误: ' + j.content + '</span>';
+                        } catch(e) {}
+                    }
+                });
+                log.scrollTop = log.scrollHeight;
+                read();
+            });
+        }
+        read();
+    })
+    .catch(e => { log.innerHTML += '\n<span style="color:#ef4444;">请求失败: ' + e + '</span>'; });
+}
+
+initCharts();
+</script>
+{% end %}

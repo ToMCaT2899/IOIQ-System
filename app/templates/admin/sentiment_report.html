@@ -1,0 +1,157 @@
+{% extends "admin/base.html" %}
+{% block title %}舆情分析报告{% end %}
+
+{% block content %}
+<style>
+.report-header { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:24px; margin-bottom:16px; text-align:center; }
+.report-header h3 { font-size:22px; color:#1f2937; margin-bottom:6px; }
+.report-header .report-meta { font-size:13px; color:#6b7280; }
+.report-section { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:20px; margin-bottom:16px; }
+.report-section h5 { font-size:15px; font-weight:600; color:#374151; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:8px; }
+.report-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:12px; }
+.report-summary-item { text-align:center; padding:12px; border-radius:8px; background:#f8fafc; }
+.report-summary-item .num { font-size:28px; font-weight:700; }
+.report-summary-item .label { font-size:12px; color:#6b7280; margin-top:4px; }
+.report-summary-item.positive .num { color:#059669; }
+.report-summary-item.neutral .num { color:#4f46e5; }
+.report-summary-item.negative .num { color:#dc2626; }
+.tag-cloud { display:flex; flex-wrap:wrap; gap:8px; }
+.tag-item { padding:4px 14px; background:#e0e7ff; border-radius:20px; font-size:13px; color:#3730a3; }
+.alert-item { padding:10px 14px; border-left:3px solid #f59e0b; background:#fffbeb; margin-bottom:8px; border-radius:0 6px 6px 0; font-size:13px; }
+.alert-item .alert-title { font-weight:600; color:#92400e; }
+.alert-item .alert-time { font-size:11px; color:#9ca3af; float:right; }
+.chart-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px; margin-bottom:16px; }
+.chart-card h5 { font-size:14px; font-weight:600; color:#374151; margin-bottom:12px; }
+.chart-box { height:280px; }
+.chart-box canvas { width:100% !important; height:100% !important; }
+.print-btn { float:right; }
+@media print {
+    .admin-header,.admin-sidebar,.print-btn { display:none !important; }
+    .admin-main { margin-left:0 !important; }
+}
+</style>
+
+<div class="report-header">
+    <button class="btn print-btn" onclick="window.print()"><i class="fas fa-print"></i> 打印报告</button>
+    <h3><i class="fas fa-file-alt"></i> 舆情分析报告</h3>
+    <div class="report-meta">报告周期：最近7天 | 生成时间：{% import datetime %}{{ datetime.datetime.now().strftime('%Y-%m-%d %H:%M') }}</div>
+</div>
+
+<!-- 报告摘要 -->
+<div class="report-section">
+    <h5><i class="fas fa-clipboard-list"></i> 情感分布概览</h5>
+    <div class="report-summary">
+        <div class="report-summary-item positive">
+            <div class="num">{{ dist.get('positive', 0) }}</div>
+            <div class="label"><i class="fas fa-smile"></i> 正面舆情</div>
+        </div>
+        <div class="report-summary-item neutral">
+            <div class="num">{{ dist.get('neutral', 0) }}</div>
+            <div class="label"><i class="fas fa-meh"></i> 中性舆情</div>
+        </div>
+        <div class="report-summary-item negative">
+            <div class="num">{{ dist.get('negative', 0) }}</div>
+            <div class="label"><i class="fas fa-frown"></i> 负面舆情</div>
+        </div>
+    </div>
+</div>
+
+<!-- 图表 -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="chart-card">
+        <h5><i class="fas fa-chart-line"></i> 舆情趋势</h5>
+        <div class="chart-box"><canvas id="trendChartReport"></canvas></div>
+    </div>
+    <div class="chart-card">
+        <h5><i class="fas fa-chart-pie"></i> 风险分布</h5>
+        <div class="chart-box"><canvas id="riskChartReport"></canvas></div>
+    </div>
+</div>
+
+<!-- 关键词 -->
+<div class="report-section">
+    <h5><i class="fas fa-cloud"></i> 热门关键词 Top 20</h5>
+    <div class="tag-cloud">
+        {% for kw in hot_words %}
+            <span class="tag-item" style="font-size:{{ max(12, min(22, 12 + kw['count'])) }}px;">
+                {{ kw['word'] }}
+                <small style="color:#9ca3af;font-size:10px;">{{ kw['count'] }}</small>
+            </span>
+        {% end %}
+        {% if not hot_words %}
+            <span style="color:#9ca3af;">暂无数据</span>
+        {% end %}
+    </div>
+</div>
+
+<!-- 未处理告警 -->
+<div class="report-section">
+    <h5><i class="fas fa-exclamation-triangle"></i> 未处理告警</h5>
+    {% if alerts.get('list') %}
+        {% for a in alerts['list'] %}
+            <div class="alert-item">
+                <span class="alert-title">{{ a['title'] }}</span>
+                <span class="alert-time">{{ a['created_at'] }}</span>
+                <div style="font-size:12px;color:#374151;margin-top:4px;">{{ a['content'][:150] }}</div>
+            </div>
+        {% end %}
+    {% else %}
+        <div style="color:#9ca3af;padding:10px;text-align:center;">暂无未处理告警</div>
+    {% end %}
+</div>
+
+<!-- 数据源分布 -->
+<div class="report-section">
+    <h5><i class="fas fa-database"></i> 数据来源分布</h5>
+    {% if source_dist %}
+        {% for s in source_dist %}
+            <span class="label label-info" style="margin-right:8px;">{{ s['name'] }}: {{ s['value'] }}条</span>
+        {% end %}
+    {% else %}
+        <span style="color:#9ca3af;">暂无数据</span>
+    {% end %}
+</div>
+
+<div style="text-align:center;padding:10px 0;color:#9ca3af;font-size:12px;">
+    <a href="/admin/sentiment" class="btn"><i class="fas fa-arrow-left"></i> 返回舆情分析</a>
+</div>
+{% end %}
+
+{% block script %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+fetch('/admin/sentiment/data')
+    .then(r => r.json())
+    .then(data => {
+        var trend = data.trend || [];
+        var labels = trend.map(t => t.date);
+        var pos = trend.map(t => t.positive || 0);
+        var neu = trend.map(t => t.neutral || 0);
+        var neg = trend.map(t => t.negative || 0);
+
+        new Chart(document.getElementById('trendChartReport'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label:'正面', data:pos, borderColor:'#10b981', tension:0.3, fill:false },
+                    { label:'中性', data:neu, borderColor:'#6366f1', tension:0.3, fill:false },
+                    { label:'负面', data:neg, borderColor:'#ef4444', tension:0.3, fill:false },
+                ]
+            },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+        });
+
+        var risk = data.risk_distribution || {};
+        new Chart(document.getElementById('riskChartReport'), {
+            type: 'doughnut',
+            data: {
+                labels: ['低风险','中风险','高风险','严重'],
+                datasets: [{ data:[risk.low||0, risk.medium||0, risk.high||0, risk.critical||0],
+                   backgroundColor:['#10b981','#f59e0b','#ef4444','#991b1b'] }]
+            },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+        });
+    });
+</script>
+{% end %}

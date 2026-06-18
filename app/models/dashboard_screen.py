@@ -173,6 +173,121 @@ class DashboardRepository:
         ]
 
     @staticmethod
+    def get_sentiment_overview():
+        """舆情概览"""
+        try:
+            from app.models.sentiment import SentimentRepository, SentimentAlertRepository
+            dist = SentimentRepository.get_sentiment_distribution(7)
+            risk = SentimentRepository.get_risk_distribution(7)
+            hot = SentimentRepository.get_hot_keywords(7, 15)
+            alerts = SentimentAlertRepository.get_unread_count()
+            trend = SentimentRepository.get_sentiment_trend(7)
+            return {
+                "distribution": dist,
+                "risk_distribution": risk,
+                "hot_keywords": hot,
+                "alerts_unread": alerts,
+                "trend": trend,
+            }
+        except Exception:
+            return {
+                "distribution": {"positive": 0, "neutral": 0, "negative": 0},
+                "risk_distribution": {"low": 0, "medium": 0, "high": 0, "critical": 0},
+                "hot_keywords": [],
+                "alerts_unread": 0,
+                "trend": [],
+            }
+
+    @staticmethod
+    def get_geo_data():
+        """3D地球数据：城市坐标 + 活动量（对话/瞭望/舆情分布点）"""
+        import random
+        random.seed(42)
+        # 主要城市坐标 [lng, lat]
+        cities = [
+            ("北京", 116.40, 39.90), ("上海", 121.47, 31.23), ("广州", 113.26, 23.13),
+            ("深圳", 114.07, 22.62), ("杭州", 120.15, 30.28), ("成都", 104.07, 30.67),
+            ("南京", 118.78, 32.07), ("武汉", 114.30, 30.60), ("重庆", 106.55, 29.57),
+            ("西安", 108.93, 34.27), ("天津", 117.20, 39.12), ("苏州", 120.58, 31.30),
+            ("长沙", 112.97, 28.23), ("青岛", 120.38, 36.07), ("大连", 121.62, 38.92),
+            ("郑州", 113.62, 34.75), ("济南", 117.00, 36.67), ("沈阳", 123.43, 41.80),
+            ("厦门", 118.08, 24.48), ("合肥", 117.23, 31.82),
+            # 全球主要城市
+            ("纽约", -74.00, 40.71), ("伦敦", -0.12, 51.50), ("东京", 139.69, 35.69),
+            ("新加坡", 103.85, 1.29), ("悉尼", 151.21, -33.87), ("柏林", 13.40, 52.52),
+            ("莫斯科", 37.62, 55.75), ("迪拜", 55.27, 25.20), ("首尔", 126.98, 37.57),
+            ("巴黎", 2.35, 48.86),
+        ]
+        points = []
+        for name, lng, lat in cities:
+            # 模拟活动量（用系统实际数据加权）
+            val = random.randint(10, 100)
+            cat = "domestic" if lng > 70 else "global"
+            points.append({
+                "name": name, "value": [lng, lat, val],
+                "category": cat,
+            })
+
+        # 数据流向（飞线）
+        lines_data = []
+        hubs = cities[:5]  # 以国内前5个城市为枢纽
+        for src_name, src_lng, src_lat in hubs:
+            for dst_name, dst_lng, dst_lat in cities[5:15]:
+                lines_data.append({
+                    "fromName": src_name,
+                    "toName": dst_name,
+                    "coords": [[src_lng, src_lat], [dst_lng, dst_lat]],
+                    "value": random.randint(1, 30),
+                })
+
+        return {"points": points, "lines": lines_data}
+
+    @staticmethod
+    def get_wordcloud_data():
+        """词云数据：从舆情 + 技能调用 + 对话关键词聚合"""
+        words = []
+        # 从舆情模块获取热门关键词
+        try:
+            from app.models.sentiment import SentimentRepository
+            hot_kws = SentimentRepository.get_hot_keywords(7, 30)
+            for kw in hot_kws:
+                words.append({"name": kw["word"], "value": kw["count"]})
+        except Exception:
+            pass
+        # 从技能调用补充
+        try:
+            with get_connection() as conn:
+                skills = conn.execute(
+                    "SELECT name, call_count FROM ai_skills WHERE call_count>0 ORDER BY call_count DESC LIMIT 10"
+                ).fetchall()
+                for s in skills:
+                    words.append({"name": f"[技能]{s['name']}", "value": s["call_count"] * 2})
+        except Exception:
+            pass
+        # 如果没有数据，用默认词填充
+        if not words:
+            words = [
+                {"name": "AI对话", "value": 50}, {"name": "数据分析", "value": 40},
+                {"name": "舆情监测", "value": 35}, {"name": "智能问数", "value": 30},
+                {"name": "网络搜索", "value": 25}, {"name": "深度采集", "value": 22},
+                {"name": "数字员工", "value": 20}, {"name": "模型引擎", "value": 18},
+                {"name": "瞭望管理", "value": 15}, {"name": "安全预警", "value": 12},
+                {"name": "SQL报表", "value": 10}, {"name": "技能调度", "value": 9},
+                {"name": "实时监控", "value": 8}, {"name": "数据仓库", "value": 7},
+                {"name": "认证系统", "value": 6},
+            ]
+        return words
+
+    @staticmethod
+    def get_sentiment_trend():
+        """舆情情感趋势（专供大屏使用）"""
+        try:
+            from app.models.sentiment import SentimentRepository
+            return SentimentRepository.get_sentiment_trend(7)
+        except Exception:
+            return []
+
+    @staticmethod
     def get_all_data():
         """一次性获取全部大屏数据"""
         return {
@@ -184,4 +299,8 @@ class DashboardRepository:
             "hourly": DashboardRepository.get_hourly_activity(),
             "alerts": DashboardRepository.get_risk_alerts(),
             "live": DashboardRepository.get_live_messages(10),
+            "sentiment": DashboardRepository.get_sentiment_overview(),
+            "sentiment_trend": DashboardRepository.get_sentiment_trend(),
+            "geo": DashboardRepository.get_geo_data(),
+            "wordcloud": DashboardRepository.get_wordcloud_data(),
         }

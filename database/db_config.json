@@ -1,0 +1,14 @@
+{
+  "engine": "sqlite",
+  "sqlite": {
+    "path": "D:\\Desktop\\实训\\IOIQ-System\\database\\app.db"
+  },
+  "mysql": {
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "",
+    "database": "app",
+    "charset": "utf8mb4"
+  }
+}

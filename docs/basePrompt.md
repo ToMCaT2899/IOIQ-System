@@ -15,7 +15,13 @@
 | 开发语言 | Python 3（虚拟环境：`python -m venv venv`） |
 | 后端框架 | Tornado（Python Web 框架，异步非阻塞，含 Tornado Template） |
 | 实时通信 | WebSocket、SSE（Server-Sent Events） |
-| 数据库 | SQLite3（轻量级关系型数据库） |
+- 数据库引擎：**SQLite/MySQL 双引擎动态切换**
+  - `app/models/db.py`：核心数据库模块，通过 `database/db_config.json` 管理引擎配置，`get_connection()` 返回平台兼容连接（MySQL 使用 PyMySQL + DictCursor + Row 包装器），`get_engine()` 查询当前引擎，`init_db()` 自动转换建表 DDL（AUTOINCREMENT→AUTO_INCREMENT、TEXT DEFAULT datetime→DATETIME DEFAULT CURRENT_TIMESTAMP）
+  - `app/services/db_migration.py`：数据迁移服务，`migrate_data()` 逐表逐行复制（含进度回调），`switch_engine()` 仅切换引擎不迁移
+  - `app/controllers/system_settings.py`：新增 `DbConfigHandler`/`DbTestHandler`/`DbMigrateHandler`（SSE流式进度）/`DbSwitchHandler`
+  - `app/templates/admin/db_config.html`：数据库配置独立页面（当前引擎状态卡片/MySQL连接参数表单/连接测试按钮/SSE进度迁移/手动切换）
+  - 依赖：`pip install pymysql`（MySQL 模式需要）
+  - 旧代码兼容：`get_connection()` 接口不变，所有 Repository 无需修改
 | 前端模板 | Tornado Template（存放于 `templates/`） |
 | 前端静态资源 | CSS / JS（存放于 `static/`） |
 | 前端组件库（第三方） | Bootstrap 5.3.8、Font Awesome 6.4.0、ZUI 3.0.0（压缩包存放于 `dist/`，使用时需解压至 `app/static/`） |
@@ -108,7 +114,8 @@ IOIQ-System/
 │  └─ treePromot.md        # 项目目录结构提示词
 ├─ test/                   # 单元测试脚本目录
 │  ├─ testCase1.py         # 用户模块基础测试用例
-│  └─ test_skill_scheduler.py  # 技能调度系统测试用例（6项）
+│  ├─ test_skill_scheduler.py  # 技能调度系统测试用例（6项）
+│  └─ test_sentiment.py    # 舆情分析测试用例（6项）
 └─ app.py                  # 主程序入口
 ```
 
@@ -132,10 +139,11 @@ IOIQ-System/
   - `ai_skill.py`：`AiSkillRepository` + `SkillCallLogRepository` 技能 CRUD + 调用日志 + 统计 + 内存缓存热更新
   - `session_manage.py`：`SessionRepository` 会话CRUD + 分页/筛选/统计 + 标记/归档/导出/批量删除
   - `chat_manage.py`：`ChatManageRepository` 消息CRUD + 分页/筛选/统计 + 审核标记 + 敏感词扫描 + 导出
-  - `dashboard_screen.py`：`DashboardRepository` 全模块聚合查询
+  - `dashboard_screen.py`：`DashboardRepository` 全模块聚合查询 + `get_geo_data()`（30个全球城市坐标/数据点/飞线流）+ `get_wordcloud_data()`（舆情+技能关键词聚合）+ `get_sentiment_trend()`（舆情情感趋势）
+  - `sentiment.py`：`SentimentRepository`（舆情分析CRUD/情感分布/风险分级/趋势统计/关键词提取/热度计算）+ `SentimentAlertRepository`（告警CRUD/未读统计/批量已读）
   - `system_settings.py`：`SystemSettingsRepository` 设置CRUD + 备份恢复 + 运行状态 + `OperationLogRepository` 日志分页/筛选/清空
   - `web_search_log.py`：`WebSearchLogRepository` 搜索日志CRUD + 统计 + 清空
-  - `app/services/`：`skill_scheduler.py`（技能调度系统/命令解析/动态注册/路由分发/日志）、`web_search.py`（搜索服务）、`search_adapter.py`（搜索适配器）、`weather_service.py`（Open-Meteo 天气API/30城市坐标/4日预报）、`music_service.py`（iTunes Search API/歌曲+歌手）、`report_service.py`（NL→SQL 报表引擎/自动图表/CSV+JSON导出）
+  - `app/services/`：`skill_scheduler.py`（技能调度系统/命令解析/动态注册/路由分发/日志）、`web_search.py`（搜索服务）、`search_adapter.py`（搜索适配器）、`weather_service.py`（Open-Meteo 天气API/30城市坐标/4日预报）、`music_service.py`（iTunes Search API/歌曲+歌手）、`report_service.py`（NL→SQL 报表引擎/自动图表/CSV+JSON导出）、`sentiment_service.py`（情感分析/词典匹配/AI分析降级/关键词提取/批量分析/自动告警）、`db_migration.py`（SQLite↔MySQL双向数据迁移/逐表逐行/SSE进度回调/引擎切换）
 - **View（视图层）** — `app/templates/`
   - 后台页面（`admin/`）：登录页、基础布局模板（ZUI 上/左/右布局，左侧菜单15项扁平无分组）、控制台首页
   - **功能管理**：`func_list.html`（列表+分页+搜索）、`func_edit.html`（新增/编辑表单）
@@ -151,9 +159,10 @@ IOIQ-System/
   - **技能管理**：`skill_list.html`（卡片网格/12个每页/分类筛选/关键词标签/状态切换）、`skill_edit.html`（名称/分类/图标/Prompt模板/模型绑定/版本）、`skill_stats.html`（调用统计/按技能筛选/日志列表）、`skill_market.html`（技能市场预留/可用技能橱窗/导入预告）
   - **会话管理**：`session_list.html`（表格列表/5项统计卡片/关键词/用户/状态/日期筛选/归档/批量删除/分页）、`session_detail.html`（会话详情/标题与标记编辑/完整对话历史/归档/导出JSON+文本）、`session_stats.html`（5项全局统计/数据说明）
   - **对话管理**：`chat_list.html`（消息表格/5项统计卡片/关键词/用户/角色/审核状态/日期筛选/标记/批量删除+标记/敏感词扫描/分页）、`chat_context.html`（消息上下文/完整对话链路/高亮当前消息）、`chat_stats.html`（5项统计指标/敏感词扫描结果/词库展示）
-  - **数智大屏**：`dashboard_screen.html`（独立暗色科技风/Chart.js图表/全屏模式/3套模板切换/拖拽布局/30s自动刷新/核心指标卡片/消息趋势折线图/角色饼图/模型柱状图/24小时热力/实时对话流/风险预警/技能排行/系统资源）
-  - **系统设置**：`system_settings.html`（4个配置分区：基本信息/运行参数/SMTP邮件/通知渠道 + 备份按钮）、`system_status.html`（6项运行状态卡片/备份列表/恢复/30s自动刷新）、`operation_logs.html`（操作日志表格/操作人+类型+日期筛选/分页/JSON导出/清空）
+  - **数智大屏**：`dashboard_screen.html`（科技暗黑风、独立于ZUI设计、ECharts ECharts-GL ECharts-wordcloud、3D地球散点+国内/全球飞线、动态关键词云、6项核心指标卡、消息趋势+舆情情感双Y轴图、实时对话流+风险预警面板、系统资源概览、SSE 5s推送+HTTP 15s轮询、starfield动画星空背景、3模板切换（A/B/C）、全屏沉浸模式、响应式适配）
+  - **系统设置**：`system_settings.html`（4个配置分区：基本信息/运行参数/SMTP邮件/通知渠道 + 备份按钮）、`system_status.html`（6项运行状态卡片/备份列表/恢复/30s自动刷新）、`db_config.html`（双引擎状态卡片/MySQL连接参数表单/连接测试/SSE数据迁移/手动切换）、`operation_logs.html`（操作日志表格/操作人+类型+日期筛选/分页/JSON导出/清空）
   - **技能增强**：`search_logs.html`（5项统计/日志表格/筛选/清除缓存）、`search_test.html`（搜索测试/结果展示/AI Prompt预览）
+  - **智能舆情**：`sentiment.html`（统计卡片/情感趋势图/风险饼图/关键词云/SSE流式分析/分页列表）、`sentiment_report.html`（舆情报告/情感分布/趋势图/关键词Top20/告警摘要）、`sentiment_alerts.html`（告警列表/未读标记/批量已读/筛选）
   - 前台页面（`web/`）：
     - `base.html` — 前台基础布局模板
     - `login.html` — 前台用户登录页（深色科技风/品牌展示区/角色区分）
@@ -182,6 +191,7 @@ IOIQ-System/
 | 15 | 数智大屏 | `/admin/dashboard` | `dashboard_screen` | fa-chart-bar |
 | 16 | 系统设置 | `/admin/system` | `system` | fa-cog |
 | 17 | 技能增强 | `/admin/search-logs` | `search_enhance` | fa-search |
+| 18 | 智能舆情 | `/admin/sentiment` | `sentiment` | fa-brain |
 
 - **Controller（控制层）** — `app/controllers/`
   - `admin_auth.py`：后台认证控制器（登录/登出/主页）
@@ -199,8 +209,9 @@ IOIQ-System/
   - `session_manage.py`：会话管理控制器（列表/详情/标题编辑/标记编辑/归档/删除/批量删除/JSON+文本导出/统计）
   - `chat_manage.py`：对话管理控制器（消息列表/上下文/删除/批量删除/审核标记/敏感词扫描/JSON导出/统计）
   - `dashboard_screen.py`：数智大屏控制器（主页 + 实时数据 JSON API）
-  - `system_settings.py`：系统设置控制器（设置保存/备份恢复/运行状态/操作日志）
+  - `system_settings.py`：系统设置控制器（设置保存/备份恢复/运行状态/操作日志/数据库配置/连接测试/SSE流式迁移/引擎切换）
   - `search_enhance.py`：技能增强控制器（搜索日志/统计/缓存清除/搜索测试）
+  - `sentiment.py`：舆情分析控制器（SSE流式分析/列表/数据API/报告生成/告警管理）
 
 ### 数据库设计
 | 表名 | 说明 | 关键字段 |
@@ -223,6 +234,8 @@ IOIQ-System/
 | `employee_versions` | 数字员工版本表 | id, employee_id(FK), version, system_prompt, skills(JSON), change_log, created_at |
 | `ai_skills` | AI 技能表 | id, name, description, category, trigger_keywords(JSON), model_engine_id, model_name, prompt_template, status(enabled/disabled), icon, call_count, version, created_at, updated_at |
 | `skill_call_logs` | 技能调用日志表 | id, skill_id, skill_name, caller_type, caller_id, caller_name, tokens_used, duration_ms, success, error_message, created_at |
+| `sentiment_analysis` | 舆情分析结果表 | id, source_type(chat/watch/deep), source_id, content, sentiment(positive/neutral/negative), sentiment_score, emotion_label, risk_level(low/medium/high/critical), keywords(JSON), entities(JSON), hot_value, source_user, analyzed_by(rule/ai), model_engine_id, model_name, tokens_used, duration_ms, created_at |
+| `sentiment_alerts` | 舆情告警表 | id, title, content, alert_type(negative_surge/...), risk_level, keywords(JSON), affected_count, trend_score, status(unread/read), resolved_by, resolved_at, created_at |
 
 ### 主入口（app.py）
 - 使用 `tornado.web.Application` 创建 Web 应用实例
@@ -326,6 +339,7 @@ IOIQ-System/
 | `/admin/chat-stats` | ChatStatsHandler(GET) | 对话消息统计 |
 | `/admin/dashboard` | DashboardScreenHandler(GET) | 数智大屏主页 |
 | `/admin/dashboard/data` | DashboardDataHandler(GET) | 大屏实时数据 API |
+| `/admin/dashboard/live` | DashboardLiveHandler(GET) | SSE 实时推送 |
 | `/admin/system` | SystemSettingsHandler(GET) | 系统设置主页 |
 | `/admin/system/save` | SystemSettingsSaveHandler(POST) | 保存系统设置 |
 | `/admin/system/backup` | SystemBackupHandler(POST) | 创建数据库备份 |
@@ -335,7 +349,21 @@ IOIQ-System/
 | `/admin/operation-logs` | OperationLogHandler(GET) | 操作日志列表 |
 | `/admin/operation-logs/clear` | OperationLogClearHandler(POST) | 清空日志 |
 | `/admin/operation-logs/export` | OperationLogExportHandler(GET) | 导出日志 JSON |
+| `/admin/db-config` | DbConfigHandler(GET) | 数据库配置页面 |
+| `/admin/db-config/save` | DbConfigSaveHandler(POST) | 保存 MySQL 连接参数 |
+| `/admin/db-config/test` | DbTestHandler(POST) | 测试 MySQL 连接 |
+| `/admin/db-config/migrate` | DbMigrateHandler(POST) | SSE 数据迁移 |
+| `/admin/db-config/switch` | DbSwitchHandler(POST) | 切换数据库引擎 |
 | `/admin/web/reports` | WebReportHandler(GET) | 业务报表页 |
+| `/admin/sentiment` | SentimentPageHandler(GET) | 舆情分析主页 |
+| `/admin/sentiment/analyze` | SentimentAnalyzeHandler(POST) | SSE 流式舆情分析 |
+| `/admin/sentiment/data` | SentimentDataHandler(GET) | 舆情数据 API |
+| `/admin/sentiment/delete` | SentimentDeleteHandler(POST) | 删除分析记录 |
+| `/admin/sentiment/report` | SentimentReportHandler(GET) | 舆情分析报告 |
+| `/admin/sentiment/alerts` | SentimentAlertsHandler(GET) | 告警列表 |
+| `/admin/sentiment/alerts/mark` | SentimentAlertMarkHandler(POST) | 标记告警已读 |
+| `/admin/sentiment/alerts/mark-all` | SentimentAlertMarkAllHandler(POST) | 全部标记已读 |
+| `/admin/sentiment/alerts/delete` | SentimentAlertDeleteHandler(POST) | 删除告警 |
 
 ### 数据流
 ```
@@ -397,6 +425,8 @@ python test/testCase1.py
 - **前台认证模块**：用户登录（深色科技风/角色区分：管理员→后台/普通用户→前台）、用户注册（用户名/密码/邮箱/自动绑定普通用户角色）、登出
 - **AI 问数模块**：ChatGPT式对话布局（左侧：模型服务切换 + 历史对话管理，主区：SSE流式对话 + Markdown渲染 + Enter发送/Shift+Enter换行）、意图识别（SQL问数/天气/音乐/通用）、**@xxx 数字员工调用**（@天气/@音乐/@西师妹/@search/@help + \\search，SSE流式响应 + 技能横幅动画 + 完成标记）、数据库表结构自动注入、SQL不展示规则、对话历史CRUD
 - **技能调度模块**：`app/services/skill_scheduler.py`，统一技能调度系统，支持 `\xxx` 和 `@xxx` 命令解析、技能动态注册/注销、处理器路由分发、调度日志自动记录（skill_call_logs表）。内置技能：search（网络搜索）、weather（天气查询）、music（音乐搜索）、report（问数报表）、help（帮助）。web_chat.py 已集成调度器替代原有内联调度逻辑
+- **舆情分析模块**：`app/services/sentiment_service.py` + `app/controllers/sentiment.py` + `app/models/sentiment.py`，AI驱动智能舆情分析。功能：规则引擎+AI模型双模式情感分析、关键词提取（2-gram/TF-IDF）、风险等级评估（low/medium/high/critical）、情感趋势图表、关键词云、负面舆情自动告警（负面占比>40%触发）、舆情报告生成、数智大屏舆情模块集成。3个页面：sentiment.html（分析主页）、sentiment_report.html（报告）、sentiment_alerts.html（告警管理）
+- **数智大屏增强模块**：`app/models/dashboard_screen.py` + `app/controllers/dashboard_screen.py` + `app/templates/admin/dashboard_screen.html`，科技感炫酷大屏v2。新增：ECharts-GL 3D地球（30个全球城市散点+国内飞线+全球飞线+云层+自转）、ECharts-wordcloud词云（圆布局/多色/舆情+技能关键词）、6项核心指标卡（含舆情分析数）、消息趋势+舆情情感双Y轴组合图、SSE实时推送（5s）+HTTP轮询（15s）双通道、starfield动画星空背景、响应式适配
 - 默认管理员账号：**admin / 123456**
 - 默认角色：超级管理员、普通管理员、普通用户（含预置功能权限）
 - 前台页面（`web/`）已实现登录、注册、AI问数对话

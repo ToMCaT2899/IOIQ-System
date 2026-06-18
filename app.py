@@ -58,17 +58,25 @@ from app.controllers.chat_manage import (
     ChatExportHandler, ChatStatsHandler,
 )
 from app.controllers.dashboard_screen import (
-    DashboardScreenHandler, DashboardDataHandler,
+    DashboardScreenHandler, DashboardDataHandler, DashboardLiveHandler,
 )
 from app.controllers.system_settings import (
     SystemSettingsHandler, SystemSettingsSaveHandler,
     SystemBackupHandler, SystemRestoreHandler,
     SystemStatusHandler, SystemStatusJsonHandler,
     OperationLogHandler, OperationLogClearHandler, OperationLogExportHandler,
+    DbConfigHandler, DbConfigSaveHandler, DbTestHandler,
+    DbMigrateHandler, DbSwitchHandler,
 )
 from app.controllers.search_enhance import (
     SearchLogHandler, SearchLogClearHandler, SearchLogExportHandler,
     SearchCacheClearHandler, SearchTestHandler,
+)
+from app.controllers.sentiment import (
+    SentimentPageHandler, SentimentAnalyzeHandler, SentimentDataHandler,
+    SentimentDeleteHandler, SentimentReportHandler,
+    SentimentAlertsHandler, SentimentAlertMarkHandler,
+    SentimentAlertMarkAllHandler, SentimentAlertDeleteHandler,
 )
 
 # 数据库初始化 & 种子数据
@@ -195,6 +203,7 @@ def create_app():
             # 数智大屏路由
             ("/admin/dashboard", DashboardScreenHandler),
             ("/admin/dashboard/data", DashboardDataHandler),
+            ("/admin/dashboard/live", DashboardLiveHandler),
             # 系统设置路由
             ("/admin/system", SystemSettingsHandler),
             ("/admin/system/save", SystemSettingsSaveHandler),
@@ -205,12 +214,28 @@ def create_app():
             ("/admin/operation-logs", OperationLogHandler),
             ("/admin/operation-logs/clear", OperationLogClearHandler),
             ("/admin/operation-logs/export", OperationLogExportHandler),
+            # 数据库配置管理
+            ("/admin/db-config", DbConfigHandler),
+            ("/admin/db-config/save", DbConfigSaveHandler),
+            ("/admin/db-config/test", DbTestHandler),
+            ("/admin/db-config/migrate", DbMigrateHandler),
+            ("/admin/db-config/switch", DbSwitchHandler),
             # 网络搜索管理路由
             ("/admin/search-logs", SearchLogHandler),
             ("/admin/search-logs/clear", SearchLogClearHandler),
             ("/admin/search-logs/export", SearchLogExportHandler),
             ("/admin/search-cache/clear", SearchCacheClearHandler),
             ("/admin/search-test", SearchTestHandler),
+            # 舆情分析路由
+            ("/admin/sentiment", SentimentPageHandler),
+            ("/admin/sentiment/analyze", SentimentAnalyzeHandler),
+            ("/admin/sentiment/data", SentimentDataHandler),
+            ("/admin/sentiment/delete", SentimentDeleteHandler),
+            ("/admin/sentiment/report", SentimentReportHandler),
+            ("/admin/sentiment/alerts", SentimentAlertsHandler),
+            ("/admin/sentiment/alerts/mark", SentimentAlertMarkHandler),
+            ("/admin/sentiment/alerts/mark-all", SentimentAlertMarkAllHandler),
+            ("/admin/sentiment/alerts/delete", SentimentAlertDeleteHandler),
         ],
         # 静态文件配置
         static_path=os.path.join(PROJECT_ROOT, "app", "static"),

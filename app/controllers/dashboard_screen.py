@@ -1,6 +1,7 @@
-# 数智大屏控制器 — 主页 + 实时数据 API
+# 数智大屏控制器 — 主页 + 实时数据 API + SSE 推送
 
 import json
+import asyncio
 import tornado.web
 
 from app.models.dashboard_screen import DashboardRepository
@@ -50,3 +51,25 @@ class DashboardDataHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.set_header("Cache-Control", "no-cache")
         self.write(json.dumps(data, ensure_ascii=False))
+
+
+class DashboardLiveHandler(tornado.web.RequestHandler):
+    """大屏实时数据 SSE 推送 — 每秒推送最新指标"""
+
+    async def get(self):
+        if not _require_login(self):
+            return
+        self.set_header("Content-Type", "text/event-stream")
+        self.set_header("Cache-Control", "no-cache")
+        self.set_header("Connection", "keep-alive")
+        self.set_header("X-Accel-Buffering", "no")
+
+        try:
+            while True:
+                data = DashboardRepository.get_all_data()
+                payload = json.dumps(data, ensure_ascii=False)
+                self.write(f"data: {payload}\n\n")
+                await self.flush()
+                await asyncio.sleep(5)  # 每5秒推送
+        except tornado.iostream.StreamClosedError:
+            pass

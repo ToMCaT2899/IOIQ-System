@@ -5,497 +5,684 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>数智大屏 - IOIQ System</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
 <style>
 :root {
-    --bg-primary:#080c18;
-    --bg-card:rgba(16,24,48,0.85);
-    --border-card:rgba(99,130,255,0.15);
-    --text-primary:#e8edff;
-    --text-secondary:#8896c4;
-    --accent-cyan:#00e5ff;
-    --accent-purple:#9d6eff;
-    --accent-blue:#448aff;
-    --accent-green:#00e676;
-    --accent-orange:#ff9100;
-    --accent-red:#ff5252;
-    --glow-cyan:0 0 20px rgba(0,229,255,0.2);
-    --glow-purple:0 0 20px rgba(157,110,255,0.2);
+    --bg-primary: #050816;
+    --bg-card: rgba(10,18,40,0.88);
+    --border-card: rgba(0,229,255,0.12);
+    --text-primary: #e0e8ff;
+    --text-secondary: #7b89b8;
+    --accent-cyan: #00e5ff;
+    --accent-purple: #b388ff;
+    --accent-blue: #448aff;
+    --accent-green: #00e676;
+    --accent-orange: #ff9100;
+    --accent-red: #ff5252;
+    --accent-pink: #ff4081;
+    --glow-cyan: 0 0 20px rgba(0,229,255,0.15);
+    --glow-purple: 0 0 24px rgba(179,136,255,0.15);
+    --glow-red: 0 0 16px rgba(255,82,82,0.12);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
-    background:var(--bg-primary);
-    color:var(--text-primary);
-    font-family:'Segoe UI','Microsoft YaHei',sans-serif;
-    overflow-x:hidden;
-    min-height:100vh;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Segoe UI','Microsoft YaHei',sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+    transition: background 0.6s;
 }
+/* animated starfield background */
 body::before{
-    content:''; position:fixed; inset:0;
-    background:radial-gradient(ellipse at 20% 20%,rgba(68,138,255,0.06) 0%,transparent 60%),
-               radial-gradient(ellipse at 80% 80%,rgba(157,110,255,0.05) 0%,transparent 60%);
-    pointer-events:none;z-index:0;
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+        radial-gradient(ellipse at 25% 15%, rgba(0,229,255,0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 75% 60%, rgba(179,136,255,0.05) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 90%, rgba(68,138,255,0.03) 0%, transparent 50%);
 }
 .grid-bg{
-    position:fixed;inset:0;pointer-events:none;z-index:0;
-    background-image:linear-gradient(rgba(99,130,255,0.04) 1px,transparent 1px),
-                     linear-gradient(90deg,rgba(99,130,255,0.04) 1px,transparent 1px);
-    background-size:60px 60px;
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+        linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+    background-size: 50px 50px;
 }
 
-/* Top Bar */
+/* ===== Top Bar ===== */
 .topbar{
-    position:relative;z-index:10;
-    display:flex;align-items:center;justify-content:space-between;
-    padding:12px 28px;
-    background:linear-gradient(180deg,rgba(16,24,48,0.95),rgba(8,12,24,0));
-    border-bottom:1px solid var(--border-card);
+    position: relative; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 24px;
+    background: linear-gradient(180deg, rgba(10,18,40,0.97), rgba(5,8,22,0.4));
+    border-bottom: 1px solid var(--border-card);
+    backdrop-filter: blur(8px);
 }
-.topbar .logo{display:flex;align-items:center;gap:12px;font-size:20px;font-weight:700;}
-.topbar .logo i{color:var(--accent-cyan);font-size:28px;}
-.topbar .actions{display:flex;gap:10px;align-items:center;}
+.topbar .logo{
+    display: flex; align-items: center; gap: 10px;
+    font-size: 18px; font-weight: 700; letter-spacing: 1px;
+}
+.topbar .logo i{color: var(--accent-cyan); font-size: 26px; animation: logoPulse 3s ease-in-out infinite;}
+@keyframes logoPulse{0%,100%{opacity:1;text-shadow:0 0 10px var(--accent-cyan)}50%{opacity:0.7;text-shadow:0 0 20px var(--accent-cyan)}}
+.time-display{font-size: 26px; font-weight: 300; letter-spacing: 3px; color: var(--accent-cyan); font-family: 'Consolas', monospace;}
+.actions{display: flex; gap: 8px; align-items: center;}
 .btn{
-    padding:7px 16px;border-radius:6px;border:1px solid rgba(99,130,255,0.3);
-    background:rgba(16,24,48,0.8);color:var(--text-secondary);
-    font-size:13px;cursor:pointer;transition:all 0.2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    padding: 6px 14px; border-radius: 6px;
+    border: 1px solid rgba(0,229,255,0.18);
+    background: rgba(10,18,40,0.7); color: var(--text-secondary);
+    font-size: 12px; cursor: pointer; transition: all 0.2s;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+    backdrop-filter: blur(4px);
 }
-.btn:hover{background:rgba(99,130,255,0.15);border-color:rgba(99,130,255,0.5);color:var(--text-primary);}
-.btn.active{background:rgba(0,229,255,0.15);border-color:var(--accent-cyan);color:var(--accent-cyan);}
-.btn.fullscreen{background:rgba(157,110,255,0.15);border-color:rgba(157,110,255,0.4);color:var(--accent-purple);}
-.time-display{font-size:28px;font-weight:300;letter-spacing:2px;color:var(--accent-cyan);font-family:'Consolas',monospace;}
+.btn:hover{background: rgba(0,229,255,0.1); border-color: rgba(0,229,255,0.35); color: var(--text-primary);}
+.btn.active{background: rgba(0,229,255,0.12); border-color: var(--accent-cyan); color: var(--accent-cyan);}
+.btn.fullscreen{background: rgba(179,136,255,0.12); border-color: rgba(179,136,255,0.3); color: var(--accent-purple);}
+.live-indicator{display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary);}
+.live-dot{width: 7px; height: 7px; border-radius: 50%; background: var(--accent-green); animation: pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 6px var(--accent-green)}50%{opacity:0.25}}
 
-/* Main Grid */
+/* ===== Main Grid ===== */
 .main-grid{
-    position:relative;z-index:5;
-    display:grid;grid-template-columns:repeat(4,1fr);
-    grid-auto-rows:minmax(140px,auto);
-    gap:14px;padding:0 24px 24px;
+    position: relative; z-index: 5;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 0.8fr;
+    grid-template-rows: auto 320px 280px 1fr;
+    gap: 10px; padding: 0 18px 18px;
 }
-.card{
-    background:var(--bg-card);
-    border:1px solid var(--border-card);
-    border-radius:12px;padding:18px;position:relative;overflow:hidden;
-    transition:all 0.3s;backdrop-filter:blur(10px);
+.metrics-row{grid-column: 1 / -1;}
+.earth-panel{grid-column: 1 / 2; grid-row: 2 / 4;}
+.live-panel{grid-column: 2 / 3; grid-row: 2 / 3;}
+.alerts-panel{grid-column: 3 / 4; grid-row: 2 / 3;}
+.wordcloud-panel{grid-column: 2 / 4; grid-row: 3 / 4;}
+.chart-trend{grid-column: 1 / 3; grid-row: 4 / 5;}
+.chart-right{grid-column: 3 / 4; grid-row: 4 / 5;}
+
+.panel{
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 10px; padding: 14px; position: relative;
+    backdrop-filter: blur(8px); overflow: hidden;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
-.card:hover{border-color:rgba(99,130,255,0.3);box-shadow:0 4px 24px rgba(0,0,0,0.3);}
-.card::before{
-    content:'';position:absolute;top:0;left:0;right:0;height:2px;
-    background:linear-gradient(90deg,transparent,var(--accent-cyan),transparent);
-    opacity:0;transition:opacity 0.3s;
+.panel:hover{border-color: rgba(0,229,255,0.25); box-shadow: var(--glow-cyan);}
+.panel-title{
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 7px;
+    padding-bottom: 8px; border-bottom: 1px solid rgba(0,229,255,0.06);
 }
-.card:hover::before{opacity:1;}
-.card-title{
-    font-size:13px;font-weight:600;color:var(--text-secondary);
-    text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;
-    display:flex;align-items:center;gap:8px;
+.panel-title i{font-size: 14px;}
+.panel-title .badge{font-size: 10px; padding: 1px 7px; border-radius: 10px; margin-left: auto; font-weight: 500;}
+.badge-live{background: rgba(0,230,118,0.15); color: var(--accent-green);}
+.badge-warn{background: rgba(255,145,0,0.15); color: var(--accent-orange);}
+
+/* ===== Metrics ===== */
+.metrics-row{
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
 }
-.card-title i{font-size:15px;}
-
-/* Metric Cards */
-.metric-row{grid-column:span 4;display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
-.metric-card{
-    background:var(--bg-card);border:1px solid var(--border-card);
-    border-radius:12px;padding:18px 20px;text-align:center;position:relative;overflow:hidden;
-    backdrop-filter:blur(10px);transition:all 0.3s;
+.metric{
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: 10px; padding: 14px 16px; text-align: center;
+    backdrop-filter: blur(8px); transition: all 0.3s;
+    position: relative; overflow: hidden;
 }
-.metric-card:hover{transform:translateY(-2px);border-color:rgba(99,130,255,0.4);}
-.metric-card .m-value{font-size:32px;font-weight:700;margin:4px 0;}
-.metric-card .m-label{font-size:12px;color:var(--text-secondary);letter-spacing:0.5px;}
-.metric-card .m-icon{font-size:22px;margin-bottom:4px;opacity:0.8;}
-.metric-card.cyan .m-value,.metric-card.cyan .m-icon{color:var(--accent-cyan);}
-.metric-card.purple .m-value,.metric-card.purple .m-icon{color:var(--accent-purple);}
-.metric-card.blue .m-value,.metric-card.blue .m-icon{color:var(--accent-blue);}
-.metric-card.green .m-value,.metric-card.green .m-icon{color:var(--accent-green);}
-.metric-card.orange .m-value,.metric-card.orange .m-icon{color:var(--accent-orange);}
+.metric:hover{transform: translateY(-2px); border-color: rgba(0,229,255,0.35);}
+.metric::after{
+    content: ''; position: absolute; bottom: 0; left: 10%; right: 10%; height: 2px;
+    border-radius: 2px; opacity: 0.5; transition: all 0.3s;
+}
+.metric:nth-child(1)::after{background: var(--accent-cyan);}
+.metric:nth-child(2)::after{background: var(--accent-purple);}
+.metric:nth-child(3)::after{background: var(--accent-blue);}
+.metric:nth-child(4)::after{background: var(--accent-green);}
+.metric:nth-child(5)::after{background: var(--accent-orange);}
+.metric:nth-child(6)::after{background: var(--accent-pink);}
+.metric:hover::after{left: 0; right: 0; opacity: 1;}
+.metric .m-icon{font-size: 20px; margin-bottom: 6px; opacity: 0.75;}
+.metric .m-value{font-size: 26px; font-weight: 700; font-family: 'Consolas',monospace;}
+.metric .m-label{font-size: 11px; color: var(--text-secondary); margin-top: 2px; letter-spacing: 0.5px;}
+.metric .m-sub{font-size: 10px; color: var(--text-secondary); opacity: 0.7; margin-top: 1px;}
+.m0 .m-icon,.m0 .m-value{color: var(--accent-cyan);}
+.m1 .m-icon,.m1 .m-value{color: var(--accent-purple);}
+.m2 .m-icon,.m2 .m-value{color: var(--accent-blue);}
+.m3 .m-icon,.m3 .m-value{color: var(--accent-green);}
+.m4 .m-icon,.m4 .m-value{color: var(--accent-orange);}
+.m5 .m-icon,.m5 .m-value{color: var(--accent-pink);}
 
-/* Chart Cards */
-.chart-card{grid-column:span 2;min-height:280px;}
-.chart-card.wide{grid-column:span 4;}
-.chart-card canvas{max-height:240px;}
+/* ===== Panel contents ===== */
+.chart{width: 100%; height: calc(100% - 30px);}
+.earth-container{width: 100%; height: calc(100% - 36px);}
+.wordcloud-container{width: 100%; height: calc(100% - 30px);}
 
-/* Live Feed */
-.live-feed{grid-column:span 1;grid-row:span 2;max-height:420px;overflow:hidden;}
-.feed-item{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid rgba(99,130,255,0.06);font-size:12px;}
-.feed-item .dot{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0;}
-.feed-item .dot.user{background:var(--accent-blue);}
-.feed-item .dot.ai{background:var(--accent-purple);}
-.feed-item .feed-body{flex:1;}
-.feed-item .feed-user{color:var(--accent-blue);font-weight:600;margin-right:4px;}
-.feed-item .feed-time{color:var(--text-secondary);font-size:11px;display:block;margin-top:2px;}
+/* Live scroll */
+.feed-scroll{max-height: calc(100% - 34px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(0,229,255,0.15) transparent;}
+.feed-scroll::-webkit-scrollbar{width: 3px;}
+.feed-scroll::-webkit-scrollbar-thumb{background: rgba(0,229,255,0.15); border-radius: 3px;}
+.feed-item{display: flex; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(0,229,255,0.05); font-size: 11px; align-items: flex-start;}
+.feed-dot{width: 6px; height: 6px; border-radius: 50%; margin-top: 4px; flex-shrink: 0;}
+.feed-dot.user{background: var(--accent-blue); box-shadow: 0 0 6px rgba(68,138,255,0.4);}
+.feed-dot.ai{background: var(--accent-purple); box-shadow: 0 0 6px rgba(179,136,255,0.4);}
+.feed-body{flex: 1; min-width: 0;}
+.feed-user{color: var(--accent-blue); font-weight: 600; margin-right: 4px;}
+.feed-content{color: var(--text-secondary); word-break: break-all;}
+.feed-time{color: rgba(123,137,184,0.5); font-size: 10px; display: block; margin-top: 2px;}
 
-/* Alerts */
-.alerts-panel{grid-column:span 1;grid-row:span 2;max-height:420px;overflow:hidden;}
-.alert-item{display:flex;gap:8px;padding:10px 0;border-bottom:1px solid rgba(99,130,255,0.06);font-size:12px;}
-.alert-item .al-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
-.alert-item.warning .al-icon{background:rgba(255,145,0,0.15);color:var(--accent-orange);}
-.alert-item.info .al-icon{background:rgba(68,138,255,0.15);color:var(--accent-blue);}
-.alert-item .al-body{flex:1;}
-.alert-item .al-title{font-weight:600;margin-bottom:2px;}
-.alert-item .al-time{color:var(--text-secondary);font-size:11px;}
+/* Alerts scroll */
+.alert-scroll{max-height: calc(100% - 34px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,145,0,0.15) transparent;}
+.alert-scroll::-webkit-scrollbar{width: 3px;}
+.alert-scroll::-webkit-scrollbar-thumb{background: rgba(255,145,0,0.15); border-radius: 3px;}
+.alert-row{display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(0,229,255,0.05); font-size: 11px;}
+.alert-icon{width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;}
+.alert-warn .alert-icon{background: rgba(255,145,0,0.12); color: var(--accent-orange);}
+.alert-info .alert-icon{background: rgba(68,138,255,0.12); color: var(--accent-blue);}
+.alert-danger .alert-icon{background: rgba(255,82,82,0.12); color: var(--accent-red);}
+.alert-body{flex: 1;}
+.alert-title{font-weight: 600; margin-bottom: 2px;}
+.alert-detail{color: var(--text-secondary);}
+.alert-time{color: rgba(123,137,184,0.5); font-size: 10px;}
 
-/* Update indicator */
-.update-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent-green);margin-right:6px;animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-.update-text{font-size:11px;color:var(--text-secondary);}
+/* Sentiment tags */
+.senti-tag{display: inline-block; padding: 1px 8px; border-radius: 8px; font-size: 10px; font-weight: 500;}
+.senti-pos{background: rgba(0,230,118,0.12); color: var(--accent-green);}
+.senti-neg{background: rgba(255,82,82,0.12); color: var(--accent-red);}
 
-/* Fullscreen */
-body.fullscreen .topbar{padding:8px 20px;}
-body.fullscreen .main-grid{padding:0 16px 16px;gap:10px;}
-body.fullscreen .topbar .logo{font-size:16px;}
+/* ===== Fullscreen ===== */
+body.fullscreen .topbar{padding: 6px 16px;}
+body.fullscreen .logo{font-size: 15px;}
+body.fullscreen .main-grid{padding: 0 10px 10px; gap: 6px;}
+body.fullscreen .panel{padding: 10px; border-radius: 8px;}
+body.fullscreen .panel-title{font-size: 10px; margin-bottom: 6px;}
 
-/* Layout customization - drag handles */
-.card[draggable]{cursor:grab;}
-.card[draggable]:active{cursor:grabbing;opacity:0.7;}
+/* ===== Responsive ===== */
+@media(max-width:1400px){
+    .main-grid{grid-template-columns: 1fr 0.8fr; grid-template-rows: auto 300px auto 260px 260px 1fr;}
+    .earth-panel{grid-column: 1/-1; grid-row: 2/3;}
+    .live-panel{grid-column: 1/2; grid-row: 3/4;}
+    .alerts-panel{grid-column: 2/3; grid-row: 3/4;}
+    .wordcloud-panel{grid-column: 1/-1; grid-row: 4/5;}
+    .chart-trend{grid-column: 1/-1; grid-row: 5/6;}
+    .chart-right{grid-column: 1/-1; grid-row: 6/7;}
+    .metrics-row{grid-template-columns: repeat(6,1fr);}
+}
+@media(max-width:768px){
+    .main-grid{grid-template-columns: 1fr;}
+    .metrics-row{grid-template-columns: repeat(2,1fr);}
+}
 
-/* Responsive */
-@media(max-width:1200px){.main-grid{grid-template-columns:repeat(2,1fr)}.metric-row{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:768px){.main-grid{grid-template-columns:1fr}.metric-row{grid-template-columns:repeat(2,1fr)}}
+/* neon glow for special panels */
+.panel.earth-panel{border-color: rgba(0,229,255,0.2);}
+.panel.earth-panel:hover{border-color: var(--accent-cyan); box-shadow: var(--glow-cyan);}
 </style>
 </head>
 <body>
 <div class="grid-bg"></div>
+<canvas id="starfield" style="position:fixed;inset:0;z-index:0;pointer-events:none;"></canvas>
 
-<!-- Top Bar -->
+<!-- ===== Top Bar ===== -->
 <div class="topbar">
     <div class="logo">
-        <i class="fas fa-eye"></i> IOIQ 数智大屏
-        <span style="font-size:11px;color:var(--text-secondary);font-weight:400;margin-left:8px;">| Data Intelligence Dashboard</span>
+        <i class="fas fa-globe-asia"></i> IOIQ 数智大屏
+        <span style="font-size:10px;color:var(--text-secondary);font-weight:400;margin-left:6px;">Data Intelligence Dashboard v2</span>
     </div>
     <div class="time-display" id="clock">--:--:--</div>
     <div class="actions">
-        <span style="font-size:12px;color:var(--text-secondary);">
-            <span class="update-dot"></span>实时
-            <span class="update-text" id="lastUpdate" style="margin-left:4px;">--</span>
-        </span>
+        <span class="live-indicator"><span class="live-dot"></span>实时 <span id="lastUpdate" style="margin-left:3px;">--</span></span>
         <button class="btn active" data-tpl="1" onclick="switchTemplate('1')"><i class="fas fa-th-large"></i> 模板A</button>
         <button class="btn" data-tpl="2" onclick="switchTemplate('2')"><i class="fas fa-th"></i> 模板B</button>
-        <button class="btn" data-tpl="3" onclick="switchTemplate('3')"><i class="fas fa-columns"></i> 模板C</button>
         <button class="btn fullscreen" onclick="toggleFullscreen()"><i class="fas fa-expand"></i> 全屏</button>
-        <a href="/admin/index" class="btn"><i class="fas fa-arrow-left"></i> 返回后台</a>
+        <button class="btn" onclick="location.reload()"><i class="fas fa-sync-alt"></i></button>
+        <a href="/admin/index" class="btn"><i class="fas fa-arrow-left"></i> 返回</a>
     </div>
 </div>
 
-<!-- Main Grid -->
-<div class="main-grid" id="dashboardGrid">
-    <!-- Metric Row -->
-    <div class="metric-row" data-gid="metrics">
-        <div class="metric-card cyan">
-            <div class="m-icon"><i class="fas fa-users"></i></div>
-            <div class="m-value" data-key="users">0</div>
-            <div class="m-label">总用户数</div>
-        </div>
-        <div class="metric-card purple">
-            <div class="m-icon"><i class="fas fa-comments"></i></div>
-            <div class="m-value" data-key="conversations">0</div>
-            <div class="m-label">总会话数</div>
-        </div>
-        <div class="metric-card blue">
-            <div class="m-icon"><i class="fas fa-envelope"></i></div>
-            <div class="m-value" data-key="messages">0</div>
-            <div class="m-label">总消息数</div>
-        </div>
-        <div class="metric-card green">
-            <div class="m-icon"><i class="fas fa-coins"></i></div>
-            <div class="m-value" data-key="tokens">0</div>
-            <div class="m-label">Token 消耗</div>
-        </div>
-        <div class="metric-card orange">
-            <div class="m-icon"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="m-value" data-key="flagged">0</div>
-            <div class="m-label">预警消息</div>
-        </div>
+<!-- ===== Main Grid ===== -->
+<div class="main-grid" id="grid">
+
+    <!-- Metrics Row -->
+    <div class="metrics-row" id="metricsRow">
+        <div class="metric m0"><div class="m-icon"><i class="fas fa-users"></i></div><div class="m-value" id="mUsers">0</div><div class="m-label">总用户数</div><div class="m-sub">系统用户</div></div>
+        <div class="metric m1"><div class="m-icon"><i class="fas fa-comments"></i></div><div class="m-value" id="mConvs">0</div><div class="m-label">总会话数</div><div class="m-sub">AI对话</div></div>
+        <div class="metric m2"><div class="m-icon"><i class="fas fa-envelope"></i></div><div class="m-value" id="mMsgs">0</div><div class="m-label">总消息数</div><div class="m-sub">含用户/AI</div></div>
+        <div class="metric m3"><div class="m-icon"><i class="fas fa-coins"></i></div><div class="m-value" id="mTokens">0</div><div class="m-label">Token消耗</div><div class="m-sub">累计调用</div></div>
+        <div class="metric m4"><div class="m-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="m-value" id="mFlagged">0</div><div class="m-label">预警消息</div><div class="m-sub">待处理</div></div>
+        <div class="metric m5"><div class="m-icon"><i class="fas fa-brain"></i></div><div class="m-value" id="mSentiment">0</div><div class="m-label">舆情分析</div><div class="m-sub">分析记录</div></div>
     </div>
 
-    <!-- Message Trend Chart -->
-    <div class="card chart-card wide" data-gid="trend">
-        <div class="card-title"><i class="fas fa-chart-line"></i> 消息趋势（近7天）</div>
-        <canvas id="chartTrend"></canvas>
-    </div>
-
-    <!-- Role Distribution -->
-    <div class="card chart-card" data-gid="role">
-        <div class="card-title"><i class="fas fa-chart-pie"></i> 消息角色分布</div>
-        <canvas id="chartRole"></canvas>
-    </div>
-
-    <!-- Model Usage -->
-    <div class="card chart-card" data-gid="model">
-        <div class="card-title"><i class="fas fa-microchip"></i> 模型调用分布</div>
-        <canvas id="chartModel"></canvas>
-    </div>
-
-    <!-- Hourly Activity -->
-    <div class="card chart-card wide" data-gid="hourly">
-        <div class="card-title"><i class="fas fa-clock"></i> 24小时活跃度</div>
-        <canvas id="chartHourly"></canvas>
+    <!-- 3D Earth Globe -->
+    <div class="panel earth-panel" style="grid-column:1/2;grid-row:2/4;">
+        <div class="panel-title"><i class="fas fa-globe-americas"></i> 3D 全球数据分布</div>
+        <div class="earth-container" id="earthChart"></div>
     </div>
 
     <!-- Live Feed -->
-    <div class="card live-feed" data-gid="live">
-        <div class="card-title"><i class="fas fa-bolt"></i> 实时对话流</div>
-        <div id="liveFeed"></div>
+    <div class="panel live-panel" style="grid-column:2/3;grid-row:2/3;">
+        <div class="panel-title"><i class="fas fa-bolt"></i> 实时对话流 <span class="badge badge-live">LIVE</span></div>
+        <div class="feed-scroll" id="liveFeed"></div>
     </div>
 
-    <!-- Risk Alerts -->
-    <div class="card alerts-panel" data-gid="alerts">
-        <div class="card-title"><i class="fas fa-shield-alt"></i> 风险预警</div>
-        <div id="alertsPanel"></div>
+    <!-- Alerts -->
+    <div class="panel alerts-panel" style="grid-column:3/4;grid-row:2/3;">
+        <div class="panel-title"><i class="fas fa-shield-alt"></i> 风险预警 <span class="badge badge-warn" id="alertBadge">0</span></div>
+        <div class="alert-scroll" id="alertsPanel"></div>
     </div>
 
-    <!-- Skill Calls -->
-    <div class="card chart-card" data-gid="skill">
-        <div class="card-title"><i class="fas fa-puzzle-piece"></i> 技能调用排行</div>
-        <canvas id="chartSkill"></canvas>
+    <!-- Word Cloud -->
+    <div class="panel wordcloud-panel" style="grid-column:2/4;grid-row:3/4;">
+        <div class="panel-title"><i class="fas fa-cloud"></i> 关键词云</div>
+        <div class="wordcloud-container" id="wordcloudChart"></div>
     </div>
 
-    <!-- System Status -->
-    <div class="card chart-card" data-gid="system">
-        <div class="card-title"><i class="fas fa-server"></i> 系统资源概览</div>
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:8px;">
-            <div style="text-align:center;">
-                <div style="font-size:28px;font-weight:700;color:var(--accent-purple);" id="sysEmployees">0</div>
-                <div style="font-size:12px;color:var(--text-secondary);">数字员工</div>
+    <!-- Message Trend -->
+    <div class="panel chart-trend" style="grid-column:1/3;grid-row:4/5;">
+        <div class="panel-title"><i class="fas fa-chart-line"></i> 消息趋势 + 舆情情感</div>
+        <div class="chart" id="chartTrend"></div>
+    </div>
+
+    <!-- Right Side: System Stats -->
+    <div class="panel chart-right" style="grid-column:3/4;grid-row:4/5;">
+        <div class="panel-title"><i class="fas fa-server"></i> 系统资源概览</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding-top:4px;">
+            <div style="text-align:center;padding:8px;background:rgba(0,229,255,0.03);border-radius:8px;">
+                <div style="font-size:20px;font-weight:700;color:var(--accent-purple);" id="sysEmployees">0</div>
+                <div style="font-size:10px;color:var(--text-secondary);">数字员工</div>
             </div>
-            <div style="text-align:center;">
-                <div style="font-size:28px;font-weight:700;color:var(--accent-cyan);" id="sysSkills">0</div>
-                <div style="font-size:12px;color:var(--text-secondary);">AI技能</div>
+            <div style="text-align:center;padding:8px;background:rgba(0,229,255,0.03);border-radius:8px;">
+                <div style="font-size:20px;font-weight:700;color:var(--accent-cyan);" id="sysSkills">0</div>
+                <div style="font-size:10px;color:var(--text-secondary);">AI技能</div>
             </div>
-            <div style="text-align:center;">
-                <div style="font-size:28px;font-weight:700;color:var(--accent-blue);" id="sysApis">0</div>
-                <div style="font-size:12px;color:var(--text-secondary);">API接口</div>
+            <div style="text-align:center;padding:8px;background:rgba(0,229,255,0.03);border-radius:8px;">
+                <div style="font-size:20px;font-weight:700;color:var(--accent-blue);" id="sysApis">0</div>
+                <div style="font-size:10px;color:var(--text-secondary);">API接口</div>
             </div>
-            <div style="text-align:center;">
-                <div style="font-size:28px;font-weight:700;color:var(--accent-green);" id="sysWatch">0</div>
-                <div style="font-size:12px;color:var(--text-secondary);">瞭望来源</div>
+            <div style="text-align:center;padding:8px;background:rgba(0,229,255,0.03);border-radius:8px;">
+                <div style="font-size:20px;font-weight:700;color:var(--accent-green);" id="sysWatch">0</div>
+                <div style="font-size:10px;color:var(--text-secondary);">瞭望来源</div>
+            </div>
+        </div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,229,255,0.06);">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);margin-bottom:4px;">
+                <span>活跃会话</span><span id="activeConvs" style="color:var(--accent-green);">0</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);margin-bottom:4px;">
+                <span>模型调用分布</span><span id="modelCount" style="color:var(--accent-blue);">0</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);">
+                <span>未读告警</span><span id="unreadAlerts" style="color:var(--accent-red);">0</span>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-let charts={};
-let refreshTimer=null;
-let currentTemplate='{{ template }}';
+// ============================================================
+// Starfield Background
+// ============================================================
+(function(){
+    var c=document.getElementById('starfield'),ctx=c.getContext('2d');
+    var stars=[],W,H;
+    function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;}
+    resize();window.addEventListener('resize',resize);
+    for(var i=0;i<120;i++)stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.5+0.3,a:Math.random(),s:Math.random()*0.02+0.005});
+    function draw(){
+        ctx.clearRect(0,0,W,H);
+        stars.forEach(function(s){
+            s.a+=s.s;if(s.a>1||s.a<0)s.s*=-1;
+            ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+            ctx.fillStyle='rgba(0,229,255,'+(s.a*0.4)+')';ctx.fill();
+        });
+        requestAnimationFrame(draw);
+    }
+    draw();
+})();
 
+// ============================================================
 // Clock
+// ============================================================
 function updateClock(){
-    const now=new Date();
-    document.getElementById('clock').textContent=
-        now.toLocaleTimeString('zh-CN',{hour12:false});
+    var n=new Date();
+    document.getElementById('clock').textContent=n.toLocaleTimeString('zh-CN',{hour12:false});
 }
 setInterval(updateClock,1000);updateClock();
 
-// Template switching
+// ============================================================
+// Template Switching
+// ============================================================
 function switchTemplate(tpl){
-    currentTemplate=tpl;
-    document.querySelectorAll('[data-tpl]').forEach(b=>b.classList.toggle('active',b.dataset.tpl===tpl));
-    const grid=document.getElementById('dashboardGrid');
-    // Template A: default 4-col
+    document.querySelectorAll('[data-tpl]').forEach(function(b){b.classList.toggle('active',b.dataset.tpl===tpl);});
+    var g=document.getElementById('grid');
     if(tpl==='1'){
-        grid.style.gridTemplateColumns='repeat(4,1fr)';
-        document.querySelector('.metric-row').style.gridTemplateColumns='repeat(5,1fr)';
+        g.style.gridTemplateColumns='1.2fr 1fr 0.8fr';
+        g.style.gridTemplateRows='auto 320px 280px 1fr';
+    }else if(tpl==='2'){
+        g.style.gridTemplateColumns='1fr 1fr';
+        g.style.gridTemplateRows='auto 300px 280px auto 1fr 1fr';
+    }else{
+        g.style.gridTemplateColumns='1fr';
+        g.style.gridTemplateRows='auto 350px 300px 280px auto 1fr';
     }
-    // Template B: 3-col compact
-    else if(tpl==='2'){
-        grid.style.gridTemplateColumns='repeat(3,1fr)';
-        document.querySelector('.metric-row').style.gridTemplateColumns='repeat(5,1fr)';
-    }
-    // Template C: focus mode - 2-col with larger charts
-    else if(tpl==='3'){
-        grid.style.gridTemplateColumns='repeat(2,1fr)';
-        document.querySelector('.metric-row').style.gridTemplateColumns='repeat(5,1fr)';
-    }
-    // Re-render charts after layout change
-    setTimeout(refreshCharts,300);
+    setTimeout(function(){resizeAllCharts();},400);
 }
 
+// ============================================================
 // Fullscreen
+// ============================================================
 function toggleFullscreen(){
     if(!document.fullscreenElement){
         document.documentElement.requestFullscreen();
         document.body.classList.add('fullscreen');
     }else{
-        document.exitFullscreen();
+        if(document.exitFullscreen)document.exitFullscreen();
         document.body.classList.remove('fullscreen');
     }
 }
-document.addEventListener('fullscreenchange',()=>{
+document.addEventListener('fullscreenchange',function(){
     document.body.classList.toggle('fullscreen',!!document.fullscreenElement);
+    setTimeout(resizeAllCharts,300);
 });
 
-// Drag-drop layout
-let draggedEl=null;
-document.querySelectorAll('.card,.metric-row').forEach(el=>{
-    if(el.classList.contains('metric-row'))return;
-    el.setAttribute('draggable','true');
-    el.addEventListener('dragstart',function(e){
-        draggedEl=this;
-        this.style.opacity='0.5';
-        e.dataTransfer.effectAllowed='move';
-    });
-    el.addEventListener('dragend',function(e){
-        this.style.opacity='';
-        draggedEl=null;
-    });
-    el.addEventListener('dragover',function(e){e.preventDefault();e.dataTransfer.dropEffect='move';});
-    el.addEventListener('drop',function(e){
-        e.preventDefault();
-        if(draggedEl!==this&&draggedEl){
-            const grid=document.getElementById('dashboardGrid');
-            const allCards=[...grid.querySelectorAll('.card,.metric-row')];
-            const idxA=allCards.indexOf(draggedEl);
-            const idxB=allCards.indexOf(this);
-            if(idxA>=0&&idxB>=0&&idxA!==idxB){
-                if(idxA<idxB){
-                    grid.insertBefore(draggedEl,this.nextSibling);
-                }else{
-                    grid.insertBefore(draggedEl,this);
-                }
-            }
-        }
-    });
-});
+// ============================================================
+// ECharts Instances
+// ============================================================
+var myCharts={};
+function resizeAllCharts(){
+    Object.values(myCharts).forEach(function(c){if(c&&c.resize)c.resize();});
+}
+window.addEventListener('resize',function(){clearTimeout(window._rt);window._rt=setTimeout(resizeAllCharts,200);});
 
-// Charts
-function createCharts(){
-    const darkOpts={
-        color:'#8896c4',
-        borderColor:'rgba(99,130,255,0.2)',
-        grid:{color:'rgba(99,130,255,0.08)'}
+// ============================================================
+// 3D Earth Globe (ECharts-GL)
+// ============================================================
+function initEarth() {
+    var dom=document.getElementById('earthChart');
+    myCharts.earth=echarts.init(dom);
+
+    var option={
+        backgroundColor:'transparent',
+        globe:{
+            baseTexture:'https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/example/asset/earth.jpg',
+            heightTexture:'https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/example/asset/bathymetry_bw_composite_4k.jpg',
+            displacementScale:0.04,
+            shading:'realistic',
+            environment:'https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/example/asset/starfield.jpg',
+            realisticMaterial:{
+                roughness: 0.8,
+                metalness: 0
+            },
+            postEffect:{enable:true,bloom:{enable:true}},
+            light:{main:{intensity:1.2},ambient:{intensity:0.2}},
+            viewControl:{autoRotate:true,autoRotateSpeed:2,targetCoord:[116.4,39.9]},
+            layers:[{
+                type:'blend',blendTo:'emission',texture:'https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/example/asset/night.jpg'
+            },{
+                type:'overlay',
+                texture:'https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/example/asset/clouds.png',
+                shading:'realistic',
+                distance:5
+            }]
+        },
+        series:[]
+    };
+    myCharts.earth.setOption(option);
+}
+
+function updateEarth(geoData){
+    if(!geoData||!myCharts.earth)return;
+    var pts=geoData.points||[];
+    var lines=geoData.lines||[];
+    var scatterData=pts.map(function(p){return{name:p.name,value:p.value,itemStyle:{color:p.category==='domestic'?'#00e5ff':'#b388ff'}}});
+    var linesSeries=lines.map(function(l){
+        return{coords:[l.coords[1],l.coords[0]],lineStyle:{color:'#00e5ff',opacity:0.3,width:1}};
+    }).slice(0,25);
+
+    // 国内流向
+    var domesticLines=[];
+    var globalLines=[];
+    lines.forEach(function(l){
+        var from=pts.find(function(p){return p.name===l.fromName;});
+        if(from&&from.category==='domestic'){domesticLines.push(l);}
+        else{globalLines.push(l);}
+    });
+
+    var toCoords=function(l,pts){
+        var fromP=pts.find(function(p){return p.name===l.fromName;});
+        var toP=pts.find(function(p){return p.name===l.toName;});
+        if(!fromP||!toP)return null;
+        return {coords:[[fromP.value[0],fromP.value[1]],[toP.value[0],toP.value[1]]],value:l.value};
     };
 
-    // Trend Line
-    charts.trend=new Chart(document.getElementById('chartTrend'),{
-        type:'line',
-        data:{labels:[],datasets:[{label:'消息数',data:[],borderColor:'#00e5ff',backgroundColor:'rgba(0,229,255,0.08)',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:'#00e5ff'}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:darkOpts,grid:darkOpts.grid},y:{ticks:darkOpts,grid:darkOpts.grid}}}
-    });
-    // Role Pie
-    charts.role=new Chart(document.getElementById('chartRole'),{
-        type:'doughnut',
-        data:{labels:[],datasets:[{data:[],backgroundColor:['#448aff','#9d6eff'],borderColor:'transparent'}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896c4',padding:16}}}}
-    });
-    // Model Bar
-    charts.model=new Chart(document.getElementById('chartModel'),{
-        type:'bar',
-        data:{labels:[],datasets:[{label:'调用次数',data:[],backgroundColor:['#9d6eff','#448aff','#00e5ff','#00e676','#ff9100','#ff5252','#e040fb','#64ffda','#ffd740','#40c4ff']}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:darkOpts,grid:darkOpts.grid},y:{ticks:darkOpts,grid:darkOpts.grid}}}
-    });
-    // Hourly
-    charts.hourly=new Chart(document.getElementById('chartHourly'),{
-        type:'bar',
-        data:{labels:[],datasets:[{label:'活跃度',data:[],backgroundColor:'rgba(0,229,255,0.5)',borderRadius:3}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{...darkOpts,maxTicksLimit:12},grid:darkOpts.grid},y:{ticks:darkOpts,grid:darkOpts.grid}}}
-    });
-    // Skill Bar
-    charts.skill=new Chart(document.getElementById('chartSkill'),{
-        type:'bar',
-        data:{labels:[],datasets:[{label:'调用次数',data:[],backgroundColor:'rgba(157,110,255,0.6)',borderRadius:3}]},
-        options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:darkOpts,grid:darkOpts.grid},y:{ticks:darkOpts,grid:darkOpts.grid}}}
+    myCharts.earth.setOption({
+        series:[
+            {
+                type:'scatter3D',coordinateSystem:'globe',
+                data:scatterData,
+                symbolSize:function(val){return Math.max(4,Math.min(16,val[2]/8));},
+                itemStyle:{borderWidth:0.5,borderColor:'rgba(255,255,255,0.6)'},
+                label:{show:false},
+                emphasis:{label:{show:true,formatter:'{b}',position:'top',color:'#fff',fontSize:10}}
+            },
+            {
+                type:'lines3D',coordinateSystem:'globe',
+                data:domesticLines.map(function(l){return toCoords(l,pts);}).filter(Boolean).slice(0,15),
+                lineStyle:{color:'#00e5ff',opacity:0.5,width:1},
+                effect:{show:true,trailLength:0.4,trailWidth:1,constantSpeed:15,symbol:'circle',symbolSize:3,color:'#00e5ff'}
+            },
+            {
+                type:'lines3D',coordinateSystem:'globe',
+                data:globalLines.map(function(l){return toCoords(l,pts);}).filter(Boolean).slice(0,10),
+                lineStyle:{color:'#b388ff',opacity:0.35,width:0.8},
+                effect:{show:true,trailLength:0.3,trailWidth:1,constantSpeed:12,symbol:'circle',symbolSize:2,color:'#b388ff'}
+            }
+        ]
     });
 }
 
-function refreshCharts(){
-    Object.values(charts).forEach(c=>c.resize());
+// ============================================================
+// Wordcloud (ECharts-wordcloud)
+// ============================================================
+function initWordcloud(){
+    var dom=document.getElementById('wordcloudChart');
+    myCharts.wordcloud=echarts.init(dom);
+    myCharts.wordcloud.setOption({
+        backgroundColor:'transparent',
+        tooltip:{show:false},
+        series:[{
+            type:'wordCloud',
+            shape:'circle',
+            keepAspect:false,
+            left:'center',top:'center',width:'95%',height:'95%',
+            right:null,bottom:null,
+            sizeRange:[14,48],
+            rotationRange:[-30,30],
+            rotationStep:15,
+            gridSize:8,
+            drawOutOfBound:false,
+            layoutAnimation:true,
+            textStyle:{
+                fontFamily:'Microsoft YaHei, sans-serif',
+                fontWeight:'normal',
+                color:function(){return['#00e5ff','#b388ff','#448aff','#00e676','#ff9100','#ff4081','#7c4dff'][Math.floor(Math.random()*7)];}
+            },
+            emphasis:{
+                focus:'self',
+                textStyle:{textShadowBlur:8,textShadowColor:'#00e5ff',fontWeight:'bold'}
+            },
+            data:[{name:'数智大屏',value:100},{name:'加载中...',value:80}]
+        }]
+    });
 }
 
-// Fetch data
-async function fetchData(){
-    try{
-        const resp=await fetch('/admin/dashboard/data');
-        const data=await resp.json();
-        updateMetrics(data.metrics);
-        updateTrend(data.trend);
-        updateRole(data.distribution);
-        updateModel(data.model_usage);
-        updateHourly(data.hourly);
-        updateSkill(data.skill_calls);
-        updateLive(data.live);
-        updateAlerts(data.alerts);
-        document.getElementById('sysEmployees').textContent=data.metrics.employees||0;
-        document.getElementById('sysSkills').textContent=data.metrics.skills||0;
-        document.getElementById('sysApis').textContent=data.metrics.apis||0;
-        document.getElementById('sysWatch').textContent=data.metrics.watch_sources||0;
-        document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('zh-CN');
-    }catch(e){console.error('Fetch error:',e);}
+function updateWordcloud(words){
+    if(!words||!words.length||!myCharts.wordcloud)return;
+    var maxV=words[0]?words[0].value:100;
+    myCharts.wordcloud.setOption({
+        series:[{
+            type:'wordCloud',
+            data:words.map(function(w){return{name:w.name,value:Math.max(1,w.value)};})
+        }]
+    });
 }
 
-function updateMetrics(m){
-    if(!m)return;
-    document.querySelector('[data-key="users"]').textContent=m.users||0;
-    document.querySelector('[data-key="conversations"]').textContent=m.conversations||0;
-    document.querySelector('[data-key="messages"]').textContent=m.messages||0;
-    document.querySelector('[data-key="tokens"]').textContent=m.tokens||0;
-    document.querySelector('[data-key="flagged"]').textContent=m.flagged||0;
+// ============================================================
+// Message Trend + Sentiment Line
+// ============================================================
+function initTrendChart(){
+    var dom=document.getElementById('chartTrend');
+    myCharts.trend=echarts.init(dom);
+    myCharts.trend.setOption({
+        backgroundColor:'transparent',
+        tooltip:{trigger:'axis',textStyle:{fontSize:11}},
+        legend:{bottom:0,textStyle:{color:'#7b89b8',fontSize:10},itemWidth:12,itemHeight:8},
+        grid:{left:40,right:20,top:15,bottom:30},
+        xAxis:{type:'category',data:[],axisLine:{lineStyle:{color:'rgba(0,229,255,0.15)'}},axisTick:{show:false},axisLabel:{color:'#7b89b8',fontSize:9}},
+        yAxis:[
+            {type:'value',name:'消息数',nameTextStyle:{color:'#7b89b8',fontSize:9},splitLine:{lineStyle:{color:'rgba(0,229,255,0.05)'}},axisLabel:{color:'#7b89b8',fontSize:9}},
+            {type:'value',name:'舆情数',nameTextStyle:{color:'#7b89b8',fontSize:9},splitLine:{show:false},axisLabel:{color:'#7b89b8',fontSize:9}}
+        ],
+        series:[
+            {name:'消息数',type:'bar',data:[],itemStyle:{color:'rgba(0,229,255,0.3)',borderRadius:[3,3,0,0]},barWidth:'60%'},
+            {name:'正面舆情',type:'line',yAxisIndex:1,data:[],lineStyle:{color:'#00e676',width:1.5},symbol:'none',smooth:true},
+            {name:'负面舆情',type:'line',yAxisIndex:1,data:[],lineStyle:{color:'#ff5252',width:1.5},symbol:'none',smooth:true}
+        ]
+    });
 }
-function updateTrend(d){
-    if(!d||!d.length)return;
-    charts.trend.data.labels=d.map(i=>i.date);
-    charts.trend.data.datasets[0].data=d.map(i=>i.count);
-    charts.trend.update();
-}
-function updateRole(d){
-    if(!d||!d.length)return;
-    charts.role.data.labels=d.map(i=>i.name);
-    charts.role.data.datasets[0].data=d.map(i=>i.value);
-    charts.role.update();
-}
-function updateModel(d){
-    if(!d||!d.length)return;
-    charts.model.data.labels=d.map(i=>i.name);
-    charts.model.data.datasets[0].data=d.map(i=>i.count);
-    charts.model.update();
-}
-function updateHourly(d){
-    if(!d||!d.length)return;
-    charts.hourly.data.labels=d.map(i=>i.hour);
-    charts.hourly.data.datasets[0].data=d.map(i=>i.count);
-    charts.hourly.update();
-}
-function updateSkill(d){
-    if(!d||!d.length)return;
-    charts.skill.data.labels=d.map(i=>i.name);
-    charts.skill.data.datasets[0].data=d.map(i=>i.count);
-    charts.skill.update();
-}
-function updateLive(d){
-    if(!d||!d.length){document.getElementById('liveFeed').innerHTML=
-        '<div style="padding:20px;text-align:center;color:var(--text-secondary);font-size:12px;">暂无实时消息</div>';return;}
-    document.getElementById('liveFeed').innerHTML=d.map(m=>
-        `<div class="feed-item">
-            <div class="dot ${m.role}"></div>
-            <div class="feed-body">
-                <span class="feed-user">${escHtml(m.username)}</span>
-                ${escHtml(m.content)}
-                <span class="feed-time">${m.time}</span>
-            </div>
-        </div>`
-    ).join('');
-}
-function updateAlerts(d){
-    if(!d||!d.length){document.getElementById('alertsPanel').innerHTML=
-        '<div style="padding:20px;text-align:center;color:var(--text-secondary);font-size:12px;"><i class="fas fa-check-circle" style="color:var(--accent-green);display:block;font-size:24px;margin-bottom:8px;"></i>无预警信息</div>';return;}
-    document.getElementById('alertsPanel').innerHTML=d.map(a=>
-        `<div class="alert-item ${a.level}">
-            <div class="al-icon"><i class="fas ${a.level==='warning'?'fa-exclamation-triangle':'fa-info-circle'}"></i></div>
-            <div class="al-body">
-                <div class="al-title">${escHtml(a.title)}</div>
-                <div>${escHtml(a.detail)}</div>
-                <div class="al-time">${a.time}</div>
-            </div>
-        </div>`
-    ).join('');
-}
-function escHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 
-// Init
-createCharts();
-fetchData();
-refreshTimer=setInterval(fetchData,30000);
+function updateTrendChart(msgTrend,sentiTrend){
+    if(!myCharts.trend)return;
+    var labels=msgTrend?msgTrend.map(function(d){return d.date;}):[];
+    var msgData=msgTrend?msgTrend.map(function(d){return d.count;}):[];
+    // merge sentiment trend by date
+    var sentiMap={};
+    if(sentiTrend){sentiTrend.forEach(function(d){sentiMap[d.date]=d;});}
+    var posData=labels.map(function(d){return sentiMap[d]?sentiMap[d].positive||0:0;});
+    var negData=labels.map(function(d){return sentiMap[d]?sentiMap[d].negative||0:0;});
+    myCharts.trend.setOption({
+        xAxis:{data:labels},
+        series:[
+            {data:msgData},
+            {data:posData},
+            {data:negData}
+        ]
+    });
+}
 
-// Initial template
-switchTemplate(currentTemplate);
+// ============================================================
+// Init All
+// ============================================================
+initEarth();
+initWordcloud();
+initTrendChart();
+
+// ============================================================
+// Data Fetch & Update
+// ============================================================
+function updateMetrics(data){
+    if(!data)return;
+    var m=data.metrics||{};
+    document.getElementById('mUsers').textContent=(m.users||0).toLocaleString();
+    document.getElementById('mConvs').textContent=(m.conversations||0).toLocaleString();
+    document.getElementById('mMsgs').textContent=(m.messages||0).toLocaleString();
+    document.getElementById('mTokens').textContent=(m.tokens||0).toLocaleString();
+    document.getElementById('mFlagged').textContent=(m.flagged||0).toLocaleString();
+    // sentiment analysis count
+    var sentiTotal=0;
+    if(data.sentiment&&data.sentiment.distribution){
+        var d=data.sentiment.distribution;
+        sentiTotal=(d.positive||0)+(d.neutral||0)+(d.negative||0);
+    }
+    document.getElementById('mSentiment').textContent=sentiTotal.toLocaleString();
+    // system panel
+    document.getElementById('sysEmployees').textContent=m.employees||0;
+    document.getElementById('sysSkills').textContent=m.skills||0;
+    document.getElementById('sysApis').textContent=m.apis||0;
+    document.getElementById('sysWatch').textContent=m.watch_sources||0;
+    document.getElementById('activeConvs').textContent=(m.active_convs||0);
+    document.getElementById('modelCount').textContent=(data.model_usage||[]).length;
+    document.getElementById('unreadAlerts').textContent=data.sentiment?data.sentiment.alerts_unread||0:0;
+}
+
+function updateLiveFeed(live){
+    var el=document.getElementById('liveFeed');
+    if(!live||!live.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-secondary);font-size:11px;">-- 暂无实时消息 --</div>';return;}
+    el.innerHTML=live.map(function(m){
+        return '<div class="feed-item">'
+            +'<div class="feed-dot '+esc(m.role)+'"></div>'
+            +'<div class="feed-body"><span class="feed-user">'+esc(m.username)+'</span> '
+            +'<span class="feed-content">'+esc(m.content)+'</span>'
+            +'<span class="feed-time">'+esc(m.time)+'</span></div>'
+            +'</div>';
+    }).join('');
+}
+
+function updateAlertsPanel(alerts,sentiment){
+    var el=document.getElementById('alertsPanel');
+    var items=[];
+    if(alerts&&alerts.length){items=items.concat(alerts);}
+    // add sentiment alerts
+    if(sentiment&&sentiment.alerts_unread>0){
+        items.push({type:'sentiment_warn',level:'warning',title:'舆情告警',
+            detail: '未读告警 '+sentiment.alerts_unread+' 条',time:''});
+    }
+    // sentiment overview
+    if(sentiment&&sentiment.distribution){
+        var d=sentiment.distribution;
+        items.push({type:'sentiment_dist',level:'info',title:'情感分布(7天)',
+            detail: '正面 '+d.positive+' | 中性 '+d.neutral+' | 负面 '+d.negative,time:''});
+    }
+    document.getElementById('alertBadge').textContent=items.length;
+    if(!items.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-secondary);font-size:11px;"><i class="fas fa-check-circle" style="color:var(--accent-green);display:block;font-size:20px;margin-bottom:6px;"></i>无预警信息</div>';return;}
+    el.innerHTML=items.map(function(a){
+        var cls=a.level==='warning'?'alert-warn':'alert-info';
+        return '<div class="alert-row '+cls+'">'
+            +'<div class="alert-icon"><i class="fas '+((a.level==='warning')?'fa-exclamation-triangle':'fa-info-circle')+'"></i></div>'
+            +'<div class="alert-body"><div class="alert-title">'+esc(a.title)+'</div>'
+            +'<div class="alert-detail">'+esc(a.detail)+'</div>'
+            +'<div class="alert-time">'+esc(a.time)+'</div></div></div>';
+    }).join('');
+}
+
+function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+
+function fetchAndUpdate(){
+    fetch('/admin/dashboard/data')
+        .then(function(r){return r.json();})
+        .then(function(d){
+            updateMetrics(d);
+            updateLiveFeed(d.live);
+            updateAlertsPanel(d.alerts,d.sentiment);
+            updateEarth(d.geo);
+            updateWordcloud(d.wordcloud);
+            updateTrendChart(d.trend,d.sentiment_trend||d.sentiment?.trend);
+            document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('zh-CN');
+        })
+        .catch(function(e){console.error('Dashboard fetch error:',e);});
+}
+
+// Initial fetch
+fetchAndUpdate();
+// Auto-refresh every 15s
+setInterval(fetchAndUpdate,15000);
+
+// SSE live fallback (faster updates for live feed)
+(function(){
+    var es=new EventSource('/admin/dashboard/live');
+    es.onmessage=function(e){
+        try{
+            var d=JSON.parse(e.data);
+            updateLiveFeed(d.live);
+            updateAlertsPanel(d.alerts,d.sentiment);
+            if(d.metrics){
+                document.getElementById('mMsgs').textContent=(d.metrics.messages||0).toLocaleString();
+                document.getElementById('mTokens').textContent=(d.metrics.tokens||0).toLocaleString();
+                document.getElementById('mFlagged').textContent=(d.metrics.flagged||0).toLocaleString();
+            }
+        }catch(err){}
+    };
+    es.onerror=function(){/* SSE disconnected, poll fallback continues */};
+})();
 </script>
 </body>
 </html>
