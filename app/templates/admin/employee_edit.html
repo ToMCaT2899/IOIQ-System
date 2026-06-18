@@ -2,21 +2,31 @@
 {% block title %}{% if is_add %}新增数字员工{% else %}编辑数字员工{% end %} - 数字员工{% end %}
 {% block head %}
 <style>
-    .form-card { max-width: 950px; }
+    .form-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 28px; max-width: 950px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
+    .form-control { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #e2e8f0; font-size: 14px; transition: all 0.2s; }
+    .form-control:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.08); outline: none; }
+    textarea.form-control { min-height: 90px; font-size: 13px; }
+    .form-row { display: flex; gap: 16px; }
+    .form-row .form-group { flex: 1; }
+    .btn-submit { padding: 11px 28px; border-radius: 8px; border: none; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(139,92,246,0.3); }
+    .btn-back { padding: 11px 20px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .hint { font-size: 12px; color: #94a3b8; margin-top: 4px; }
 
-    .version-section { margin-top: 28px; padding-top: 20px; border-top: 1px solid rgba(0,229,255,0.1); }
-    .version-section h4 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+    .version-section { margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+    .version-section h4 { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 6px; }
     .version-list { margin-top: 12px; }
-    .version-item { padding: 10px 14px; background: var(--bg-card); border-radius: 8px; margin-bottom: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
-    .version-item .v-num { font-weight: 600; color: var(--accent-purple); }
-    .version-item .v-date { font-size: 12px; color: var(--text-muted); }
-    .version-item .v-log { font-size: 12px; color: var(--text-secondary); }
-    .skill-checkbox-list { max-height:240px; overflow-y:auto; border:1px solid var(--border-input); border-radius:8px; padding:10px 14px; background:var(--bg-input); }
+    .version-item { padding: 10px 14px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+    .version-item .v-num { font-weight: 600; color: #8b5cf6; }
+    .version-item .v-date { font-size: 12px; color: #94a3b8; }
+    .version-item .v-log { font-size: 12px; color: #64748b; }
 </style>
 {% end %}
 {% block content %}
 <div class="page-header">
-    <h2><i class="fas fa-robot me-2" style="color:var(--accent-purple);"></i>{% if is_add %}新增数字员工{% else %}编辑数字员工{% end %}</h2>
+    <h2><i class="fas fa-robot me-2" style="color:#8b5cf6;"></i>{% if is_add %}新增数字员工{% else %}编辑数字员工{% end %}</h2>
     <p>配置数字员工的基本信息、技能绑定和角色定位</p>
 </div>
 
@@ -25,33 +35,45 @@
         <div class="form-row">
             <div class="form-group">
                 <label>员工名称 *</label>
-                <input type="text" name="name" class="form-control" required placeholder="如：西师妹" value="{{ employee['name'] if employee else '' }}">
+                <input type="text" name="name" class="form-control" placeholder="例如：西师妹" value="{{ employee['name'] if employee else '' }}" required>
             </div>
             <div class="form-group">
-                <label>角色名</label>
-                <input type="text" name="role_name" class="form-control" placeholder="如：数据分析师" value="{{ employee['role_name'] if employee else '' }}">
+                <label>角色定位</label>
+                <input type="text" name="role_name" class="form-control" placeholder="例如：AI 智能助理" value="{{ employee['role_name'] if employee else '' }}">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex:0 0 120px;">
+                <label>头像（emoji）</label>
+                <input type="text" name="avatar" class="form-control" placeholder="ðŸ¤-" maxlength="4" value="{{ employee['avatar'] if employee else '' }}">
+                <div class="hint">可选，1-2个 emoji 字符</div>
+            </div>
+            <div class="form-group">
+                <label>欢迎语</label>
+                <input type="text" name="greeting" class="form-control" placeholder="例如：你好！我是西师妹，很高兴为你服务~" value="{{ employee['greeting'] if employee else '' }}">
             </div>
         </div>
 
         <div class="form-group">
-            <label>绑定技能 <span style="font-weight:400;color:var(--text-muted);">（从技能管理中实时读取，多选）</span></label>
-            <div class="skill-checkbox-list">
+            <label>绑定技能 <span style="font-weight:400;color:#94a3b8;">（从技能管理中实时读取，多选）</span></label>
+            <div class="skill-checkbox-list" style="max-height:240px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 14px;">
                 {% if all_skills %}
                     {% for s in all_skills %}
                     {% set sid = str(s['id']) %}
-                    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(0,229,255,0.04);">
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;border-bottom:1px solid #f8fafc;">
                         <input type="checkbox" name="skill_ids" value="{{ s['id'] }}"
                             {% if employee_skill_ids and sid in employee_skill_ids %}checked{% end %}
-                            style="width:16px;height:16px;accent-color:var(--accent-cyan);">
-                        <span style="flex:1;color:var(--text-primary);">{{ s['name'] }}</span>
-                        <span style="font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(0,229,255,0.08);color:var(--accent-cyan);">{{ s['category'] }}</span>
+                            style="width:16px;height:16px;accent-color:#8b5cf6;">
+                        <span style="flex:1;color:#334155;">{{ s['name'] }}</span>
+                        <span style="font-size:11px;padding:2px 8px;border-radius:4px;background:#eef2ff;color:#4a6cf7;">{{ s['category'] }}</span>
                         {% if s['status'] != 'enabled' %}
-                        <span style="font-size:10px;color:var(--text-muted);">({{ '已停用' if s['status'] == 'disabled' else '维护中' }})</span>
+                        <span style="font-size:10px;color:#94a3b8;">({{ '已停用' if s['status'] == 'disabled' else '维护中' }})</span>
                         {% end %}
                     </label>
                     {% end %}
                 {% else %}
-                    <p style="color:var(--text-muted);text-align:center;padding:20px;">暂无技能，请先在<a href="/admin/skills">技能管理</a>中创建</p>
+                    <p style="color:#94a3b8;text-align:center;padding:20px;">暂无技能，请先在<a href="/admin/skills" style="color:#8b5cf6;">技能管理</a>中创建</p>
                 {% end %}
             </div>
             <div class="hint">勾选后保存，技能关联实时生效；技能管理中的变更会自动同步</div>
@@ -93,7 +115,7 @@
         {% if not is_add %}
         <div class="version-section">
             <h4><i class="fas fa-code-branch me-1"></i>版本升级</h4>
-            <p style="font-size:13px;color:var(--text-muted);">填写新版本号和变更日志，保存后将自动创建版本记录</p>
+            <p style="font-size:13px;color:#94a3b8;">填写新版本号和变更日志，保存后将自动创建版本记录</p>
             <div class="form-row">
                 <div class="form-group">
                     <input type="text" name="new_version" class="form-control" placeholder="新版本号，如 1.1">
@@ -106,7 +128,7 @@
 
         {% if versions %}
         <div class="version-list">
-            <h5 style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">历史版本</h5>
+            <h5 style="font-size:13px;color:#64748b;margin-bottom:8px;">历史版本</h5>
             {% for v in versions %}
             <div class="version-item">
                 <span class="v-num">v{{ v['version'] }}</span>
@@ -119,8 +141,8 @@
         {% end %}
 
         <div style="display:flex;gap:12px;margin-top:28px;">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>保存</button>
-            <a href="/admin/employees" class="btn btn-outline"><i class="fas fa-arrow-left me-1"></i>返回列表</a>
+            <button type="submit" class="btn-submit"><i class="fas fa-save me-1"></i>保存</button>
+            <a href="/admin/employees" class="btn-back"><i class="fas fa-arrow-left me-1"></i>返回列表</a>
         </div>
     </form>
 </div>

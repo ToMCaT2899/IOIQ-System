@@ -5,69 +5,84 @@
 {% block content %}
 <div class="page-header">
     <h2>控制台</h2>
-    <p>欢迎使用 IOIQ 智能瞭望与智能问数系统管理后台 <span id="refreshTag" style="font-size:11px;color:var(--text-muted);margin-left:8px;"></span></p>
+    <p>欢迎使用 IOIQ 智能瞭望与智能问数系统管理后台 <span id="refreshTag" style="font-size:11px;color:#94a3b8;margin-left:8px;"></span></p>
 </div>
 
-<div class="stat-grid">
-    <div class="stat-card">
-        <div class="stat-icon" style="background:rgba(0,229,255,0.1);color:var(--accent-cyan);"><i class="fas fa-eye"></i></div>
-        <div>
-            <div class="stat-value" style="color:var(--accent-cyan);" id="statWatch">--</div>
-            <div class="stat-label">智能瞭望</div>
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div style="background:#fff; border-radius:10px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">智能瞭望</div>
+                <div style="font-size:28px; font-weight:700; color:#1e293b;" id="statWatch">--</div>
+            </div>
+            <div style="width:48px; height:48px; background:#eef2ff; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-eye" style="color:#4a6cf7; font-size:20px;"></i>
+            </div>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background:rgba(0,230,118,0.1);color:var(--accent-green);"><i class="fas fa-database"></i></div>
-        <div>
-            <div class="stat-value" style="color:var(--accent-green);" id="statData">--</div>
-            <div class="stat-label">自助问数</div>
+
+    <div style="background:#fff; border-radius:10px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">自助问数</div>
+                <div style="font-size:28px; font-weight:700; color:#1e293b;" id="statData">--</div>
+            </div>
+            <div style="width:48px; height:48px; background:#f0fdf4; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-database" style="color:#22c55e; font-size:20px;"></i>
+            </div>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background:rgba(255,145,0,0.1);color:var(--accent-orange);"><i class="fas fa-comments"></i></div>
-        <div>
-            <div class="stat-value" style="color:var(--accent-orange);" id="statChat">--</div>
-            <div class="stat-label">智能对话</div>
+
+    <div style="background:#fff; border-radius:10px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">智能对话</div>
+                <div style="font-size:28px; font-weight:700; color:#1e293b;" id="statChat">--</div>
+            </div>
+            <div style="width:48px; height:48px; background:#fef3c7; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-comments" style="color:#f59e0b; font-size:20px;"></i>
+            </div>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background:rgba(255,64,129,0.1);color:var(--accent-pink);"><i class="fas fa-chart-line"></i></div>
-        <div>
-            <div class="stat-value" style="color:var(--accent-pink);" id="statSentiment">--</div>
-            <div class="stat-label">舆情分析</div>
+
+    <div style="background:#fff; border-radius:10px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">舆情分析</div>
+                <div style="font-size:28px; font-weight:700; color:#1e293b;" id="statSentiment">--</div>
+            </div>
+            <div style="width:48px; height:48px; background:#fce7f3; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-chart-line" style="color:#ec4899; font-size:20px;"></i>
+            </div>
         </div>
     </div>
 </div>
 
 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-    <div class="form-card">
-        <h3 style="font-size:15px; font-weight:600; color:var(--text-primary); margin-bottom:16px;display:flex;align-items:center;gap:10px;">
-            <i class="fas fa-bell" style="color:var(--accent-cyan);"></i>系统公告
-        </h3>
-        <div style="color:var(--text-secondary); font-size:14px; line-height:1.8;">
+    <div style="background:#fff; border-radius:10px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <h3 style="font-size:15px; font-weight:600; color:#1e293b; margin-bottom:16px;"><i class="fas fa-bell me-2" style="color:#4a6cf7;"></i>系统公告</h3>
+        <div style="color:#94a3b8; font-size:14px; line-height:1.8;">
             <p>欢迎使用 IOIQ 智能瞭望与智能问数系统。</p>
             <p>当前版本：v0.1（开发中）</p>
             <p>更多功能模块正在持续开发中，敬请期待。</p>
         </div>
     </div>
 
-    <div class="form-card">
-        <h3 style="font-size:15px; font-weight:600; color:var(--text-primary); margin-bottom:16px;display:flex;align-items:center;gap:10px;">
-            <i class="fas fa-info-circle" style="color:var(--accent-cyan);"></i>系统信息
-        </h3>
-        <ul class="info-list">
-            <li><span class="info-label">系统名称</span><span class="info-value">IOIQ 智能瞭望与智能问数系统</span></li>
-            <li><span class="info-label">数据库引擎</span><span class="info-value" id="dbEngine">--</span></li>
-            <li><span class="info-label">当前用户</span><span class="info-value">{{ username }}</span></li>
-            <li><span class="info-label">服务端口</span><span class="info-value">10086</span></li>
-        </ul>
+    <div style="background:#fff; border-radius:10px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <h3 style="font-size:15px; font-weight:600; color:#1e293b; margin-bottom:16px;"><i class="fas fa-info-circle me-2" style="color:#4a6cf7;"></i>系统信息</h3>
+        <table style="width:100%; font-size:13px; color:#475569;">
+            <tr><td style="padding:8px 0; color:#94a3b8;">系统名称</td><td>IOIQ 智能瞭望与智能问数系统</td></tr>
+            <tr><td style="padding:8px 0; color:#94a3b8;">数据库引擎</td><td><span id="dbEngine">--</span></td></tr>
+            <tr><td style="padding:8px 0; color:#94a3b8;">当前用户</td><td>{{ username }}</td></tr>
+            <tr><td style="padding:8px 0; color:#94a3b8;">服务端口</td><td>10086</td></tr>
+        </table>
     </div>
 </div>
 
 <script>
 (function(){
     function loadStats(){
-        fetch('/admin/stats',{credentials:'same-origin'})
+        fetch('/admin/stats', {credentials:'same-origin'})
             .then(function(r){ return r.json(); })
             .then(function(resp){
                 if (!resp.ok) return;
