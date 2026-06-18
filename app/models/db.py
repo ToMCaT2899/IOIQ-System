@@ -28,12 +28,18 @@ def init_db():
 						username TEXT NOT NULL UNIQUE,
 						password_hash TEXT NOT NULL,
 						salt TEXT NOT NULL,
+						email TEXT DEFAULT '',
 						role_id INTEGER DEFAULT NULL,
 						status INTEGER DEFAULT 1,
 						created_at TEXT NOT NULL DEFAULT (datetime('now'))
 					)
 			"""
 			)
+		# 兼容旧表：添加 email 列（如果不存在）
+		try:
+			conn.execute("ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''")
+		except Exception:
+			pass
 		# 角色表
 		conn.execute(
 			"""
@@ -153,6 +159,35 @@ def init_db():
 						duration_ms INTEGER DEFAULT 0,
 						created_at TEXT NOT NULL DEFAULT (datetime('now')),
 						FOREIGN KEY(watch_result_id) REFERENCES watch_results(id) ON DELETE CASCADE
+					)
+			"""
+			)
+		# 对话会话表
+		conn.execute(
+			"""
+				CREATE TABLE IF NOT EXISTS conversations(
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						user_id INTEGER NOT NULL,
+						title TEXT DEFAULT '新对话',
+						model_engine_id INTEGER DEFAULT 0,
+						model_name TEXT DEFAULT '',
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+						FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+					)
+			"""
+			)
+		# 对话消息表
+		conn.execute(
+			"""
+				CREATE TABLE IF NOT EXISTS chat_messages(
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						conversation_id INTEGER NOT NULL,
+						role TEXT NOT NULL DEFAULT 'user',
+						content TEXT DEFAULT '',
+						tokens_used INTEGER DEFAULT 0,
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 					)
 			"""
 			)

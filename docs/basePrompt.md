@@ -133,7 +133,12 @@ IOIQ-System/
   - **瞭望数据源管理**：`watch_source_list.html`（表格列表+分页+搜索）、`watch_source_edit.html`（采集规则配置/请求头JSON编辑器/分页开关）
   - **瞭望采集**：`watch_collect.html`（独立深色科技风页面 / 中央搜索框 / 采集源开关面板 / 参数配置联动 / 结果橱窗3列 / 多选全选 / 一键保存）
   - **数据仓库**：`data_warehouse.html`（采集结果列表 + 关键词/时间/来源筛选 + 全选批量删除 + AI深度采集入口(实时进度面板/SSE流式/统计) + 深度采集状态标识 + 分页20条/页）、`deep_detail.html`（源数据信息/AI分析摘要/提取正文/采集日志）
-  - 前台页面（`web/`）：预留，待后续开发
+  - **深度采集列表**：`deep_collect_list.html`（所有深度采集任务/统计卡片/状态/分页）
+  - 前台页面（`web/`）：
+    - `base.html` — 前台基础布局模板
+    - `login.html` — 前台用户登录页（深色科技风/品牌展示区/角色区分）
+    - `register.html` — 前台用户注册页（用户名/邮箱/密码/确认密码）
+    - `chat.html` — AI 智能问数对话页（ChatGPT式布局/左侧模型切换+历史记录/主对话区SSE流式/Enter发送/Shift+Enter换行/@预留调用数字员工/marked.js Markdown渲染）
 
 ### 左侧菜单结构（admin/base.html）
 菜单项按以下顺序扁平排列，无分组标题：
@@ -164,6 +169,8 @@ IOIQ-System/
   - `watch_collect.py`：瞭望采集控制器（采集主页面 + 数据源JSON接口 + SSE 流式采集执行 + 批量保存）
   - `data_warehouse.py`：数据仓库控制器（列表/筛选/单条删除/批量删除，每页20条）
   - `deep_collect.py`：深度采集控制器（SSE流式采集 / 单条+批量 / 网页抓取+BeautifulSoup提取 / 默认模型AI分析 / 详情查看）
+  - `web_auth.py`：前台认证控制器（登录/注册/登出，角色区分：管理员→后台/普通用户→前台）
+  - `web_chat.py`：AI 问数对话控制器（ChatGPT式交互 / SSE 流式 / 意图识别SQL天气音乐 / 历史会话管理 / SQLite schema 自动注入 / SQL 不展示规则）
 
 ### 数据库设计
 | 表名 | 说明 | 关键字段 |
@@ -176,6 +183,8 @@ IOIQ-System/
 | `watch_sources` | 瞭望数据源表 | id, name, url_template(含{关键词}/{pn}占位), method, headers(JSON), proxy, enable_pagination, status |
 | `watch_results` | 瞭望采集结果表 | id, source_id, source_name, keyword, title, url, snippet, raw_html, page_num, deep_status(0未深度/1已深度), collected_at |
 | `deep_results` | 深度采集结果表 | id, watch_result_id(FK), source_url, model_engine_id, model_name, title, full_content(完整正文), content_summary(AI摘要), status(success/fail), error_message, log_text, tokens_used, duration_ms, created_at |
+| `conversations` | 对话会话表 | id, user_id(FK), title, model_engine_id, model_name, created_at, updated_at |
+| `chat_messages` | 对话消息表 | id, conversation_id(FK), role(user/assistant), content, tokens_used, created_at |
 
 ### 主入口（app.py）
 - 使用 `tornado.web.Application` 创建 Web 应用实例
@@ -188,7 +197,14 @@ IOIQ-System/
 ### 路由表
 | 路径 | Handler | 说明 |
 |------|---------|------|
-| `/` | IndexHandler | 前台首页 |
+| `/` | IndexHandler | 前台首页（重定向到 /login） |
+| `/login` | WebLoginHandler | 前台用户登录页 & 登录提交（角色区分） |
+| `/register` | WebRegisterHandler(GET/POST) | 前台用户注册 |
+| `/logout` | WebLogoutHandler(POST) | 前台登出 |
+| `/chat` | ChatPageHandler | AI 问数对话主页面 |
+| `/chat/sse` | ChatSSEHandler(POST) | SSE 流式对话接口（含意图识别） |
+| `/chat/history` | ChatHistoryHandler(GET) | 获取会话历史消息 |
+| `/chat/delete` | ChatDeleteHandler(POST) | 删除对话会话 |
 | `/admin/login` | AdminLoginHandler | 后台登录页 & 登录提交 |
 | `/admin/index` | AdminIndexHandler | 后台控制台（需登录） |
 | `/admin/logout` | AdminLogoutHandler | 后台登出 |
@@ -283,6 +299,8 @@ python test/testCase1.py
 - **瞭望采集模块**：独立深色科技风页面（非ZUI布局）+ 中央搜索框 + 采集源动态开关面板 + 参数配置联动(pages/pn_step/URL预览) + SSE流式采集 + 结果3列橱窗 + 多选/全选 + 一键保存到数据库
 - **数据仓库模块**：采集结果列表 + 关键词/数据来源/时间范围筛选 + 全选批量删除 + 单条删除 + 分页(20条/页) + 深度采集状态标注（已深度/未深度）
 - **深度采集模块**：单条/批量深度采集 + SSE流式进度面板 + 实时日志 + 网页抓取(requests+BeautifulSoup) + 默认模型AI分析(OpenAI兼容API) + 统计（成功/失败/耗时/Tokens） + 详情查看页（源数据信息/AI摘要/完整正文/采集日志）
+- **前台认证模块**：用户登录（深色科技风/角色区分：管理员→后台/普通用户→前台）、用户注册（用户名/密码/邮箱/自动绑定普通用户角色）、登出
+- **AI 问数模块**：ChatGPT式对话布局（左侧：模型服务切换 + 历史对话管理，主区：SSE流式对话 + Markdown渲染 + Enter发送/Shift+Enter换行）、意图识别（SQL问数/天气/音乐/通用）、@预留调用数字员工、数据库表结构自动注入、SQL不展示规则、对话历史CRUD
 - 默认管理员账号：**admin / 123456**
 - 默认角色：超级管理员、普通管理员、普通用户（含预置功能权限）
-- 前台页面（`web/`）预留待后续开发
+- 前台页面（`web/`）已实现登录、注册、AI问数对话

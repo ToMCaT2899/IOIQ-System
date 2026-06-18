@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录 - IOIQ 智能瞭望与智能问数系统</title>
+    <title>注册 - IOIQ 智能瞭望与智能问数系统</title>
     <link rel="stylesheet" href="/static/bootstrap-5.3.8-dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="/static/fontawesome-free-6.4.0-web/css/all.min.css">
     <style>
@@ -13,12 +13,12 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
             overflow: hidden;
         }
-        .login-container {
+        .register-container {
             display: flex;
             width: 100%; height: 100vh;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
         }
-        .login-left {
+        .register-left {
             flex: 1;
             display: flex; align-items: center; justify-content: center;
             flex-direction: column;
@@ -26,7 +26,7 @@
             padding: 60px;
             position: relative;
         }
-        .login-left::before {
+        .register-left::before {
             content: '';
             position: absolute;
             top: -20%; right: -10%;
@@ -66,39 +66,39 @@
         .left-features li i {
             color: #6366f1; font-size: 16px; width: 20px; text-align: center;
         }
-        .login-right {
+        .register-right {
             flex: 1;
             display: flex; align-items: center; justify-content: center;
             background: #fff;
             padding: 60px;
-            border-radius: 32px 0 0 32px;
+            border-radius: 0 32px 32px 0;
             position: relative;
         }
-        .login-form-wrapper {
-            width: 100%; max-width: 400px;
+        .register-form-wrapper {
+            width: 100%; max-width: 420px;
         }
-        .login-form-wrapper h2 {
+        .register-form-wrapper h2 {
             font-size: 26px; font-weight: 700; color: #1e293b; margin-bottom: 6px;
         }
-        .login-form-wrapper .sub {
-            font-size: 14px; color: #94a3b8; margin-bottom: 32px;
+        .register-form-wrapper .sub {
+            font-size: 14px; color: #94a3b8; margin-bottom: 28px;
         }
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 16px;
         }
         .form-group label {
-            font-size: 13px; color: #475569; font-weight: 600; margin-bottom: 6px; display: block;
+            font-size: 13px; color: #475569; font-weight: 600; margin-bottom: 5px; display: block;
         }
         .form-control {
             border-radius: 10px; border: 1.5px solid #e2e8f0;
-            padding: 13px 16px; font-size: 15px;
+            padding: 12px 16px; font-size: 15px;
             transition: all 0.25s ease;
         }
         .form-control:focus {
             border-color: #4a6cf7;
             box-shadow: 0 0 0 3px rgba(74,108,247,0.12);
         }
-        .btn-login {
+        .btn-register {
             width: 100%; padding: 13px;
             border-radius: 10px; border: none;
             background: linear-gradient(135deg, #4a6cf7, #6366f1);
@@ -106,29 +106,63 @@
             cursor: pointer; letter-spacing: 2px;
             transition: all 0.25s ease;
         }
-        .btn-login:hover {
+        .btn-register:hover {
             transform: translateY(-1px);
             box-shadow: 0 6px 20px rgba(74,108,247,0.35);
         }
         .error-msg {
-            color: #e53e3e; font-size: 13px; margin-top: 8px;
+            color: #e53e3e; font-size: 13px; margin-bottom: 10px;
+            background: #fef2f2; padding: 10px 14px; border-radius: 8px;
         }
-        .register-link {
-            text-align: center; margin-top: 20px;
+        .login-link {
+            text-align: center; margin-top: 18px;
             font-size: 14px; color: #94a3b8;
         }
-        .register-link a {
+        .login-link a {
             color: #4a6cf7; text-decoration: none; font-weight: 600;
         }
         @media (max-width: 768px) {
-            .login-left { display: none; }
-            .login-right { border-radius: 0; padding: 40px 24px; }
+            .register-left { display: none; }
+            .register-right { border-radius: 0; padding: 40px 24px; }
         }
     </style>
 </head>
 <body>
-<div class="login-container">
-    <div class="login-left">
+<div class="register-container">
+    <div class="register-right" style="order:-1; border-radius: 32px 0 0 32px;">
+        <div class="register-form-wrapper">
+            <h2>创建账户</h2>
+            <p class="sub">注册成为 IOIQ 用户，体验智能问数</p>
+            {% if error %}
+            <div class="error-msg">{{ error }}</div>
+            {% end %}
+            <form method="post">
+                <div class="form-group">
+                    <label>用户名 <span style="color:#94a3b8;font-weight:400;">(至少3个字符)</span></label>
+                    <input type="text" name="username" class="form-control" placeholder="请输入用户名" value="{{ form.get('username', '') }}" required minlength="3">
+                </div>
+                <div class="form-group">
+                    <label>邮箱 <span style="color:#94a3b8;font-weight:400;">(选填)</span></label>
+                    <input type="email" name="email" class="form-control" placeholder="请输入邮箱地址" value="{{ form.get('email', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>密码 <span style="color:#94a3b8;font-weight:400;">(至少4个字符)</span></label>
+                    <input type="password" name="password" class="form-control" placeholder="请输入密码" required minlength="4">
+                </div>
+                <div class="form-group">
+                    <label>确认密码</label>
+                    <input type="password" name="password_confirm" class="form-control" placeholder="请再次输入密码" required minlength="4">
+                </div>
+                <button type="submit" class="btn-register" style="margin-top: 6px;">
+                    <i class="fas fa-user-plus me-2"></i>注 册
+                </button>
+            </form>
+            <div class="login-link">
+                已有账户？<a href="/login">立即登录</a>
+            </div>
+        </div>
+    </div>
+    <div class="register-left">
         <div class="left-brand">
             <div class="icon"><i class="fas fa-eye"></i></div>
             <span class="name">IOIQ System</span>
@@ -140,31 +174,6 @@
             <li><i class="fas fa-satellite-dish"></i> 智能瞭望与舆情监测</li>
             <li><i class="fas fa-shield-alt"></i> 安全可靠的权限管理</li>
         </ul>
-    </div>
-    <div class="login-right">
-        <div class="login-form-wrapper">
-            <h2>欢迎回来</h2>
-            <p class="sub">登录您的账户，开始智能问数之旅</p>
-            <form method="post">
-                <div class="form-group">
-                    <label>用户名</label>
-                    <input type="text" name="username" class="form-control" placeholder="请输入用户名" required>
-                </div>
-                <div class="form-group">
-                    <label>密码</label>
-                    <input type="password" name="password" class="form-control" placeholder="请输入密码" required>
-                </div>
-                {% if error %}
-                <div class="error-msg">{{ error }}</div>
-                {% end %}
-                <button type="submit" class="btn-login" style="margin-top: 10px;">
-                    <i class="fas fa-sign-in-alt me-2"></i>登 录
-                </button>
-            </form>
-            <div class="register-link">
-                还没有账户？<a href="/register">立即注册</a>
-            </div>
-        </div>
     </div>
 </div>
 </body>

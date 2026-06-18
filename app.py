@@ -32,6 +32,8 @@ from app.controllers.data_warehouse import (
 from app.controllers.deep_collect import (
     DeepCollectListHandler, DeepCollectSSEHandler, DeepCollectDetailHandler,
 )
+from app.controllers.web_auth import WebLoginHandler, WebRegisterHandler, WebLogoutHandler
+from app.controllers.web_chat import ChatPageHandler, ChatSSEHandler, ChatHistoryHandler, ChatDeleteHandler
 
 # 数据库初始化 & 种子数据
 from app.models.db import init_db, seed_admin, seed_roles_and_functions, seed_model_engines, seed_watch_sources
@@ -50,6 +52,15 @@ def create_app():
             # 前台路由（预留）
             ("/", IndexHandler),
             ("/index.html", IndexHandler),
+            # 前台认证路由
+            ("/login", WebLoginHandler),
+            ("/register", WebRegisterHandler),
+            ("/logout", WebLogoutHandler),
+            # 前台 AI 问数对话路由
+            ("/chat", ChatPageHandler),
+            ("/chat/sse", ChatSSEHandler),
+            ("/chat/history", ChatHistoryHandler),
+            ("/chat/delete", ChatDeleteHandler),
             # 后台认证路由
             ("/admin/login", AdminLoginHandler),
             ("/admin/index", AdminIndexHandler),
@@ -107,11 +118,10 @@ def create_app():
 
 
 class IndexHandler(tornado.web.RequestHandler):
-    """前台首页处理器（预留）"""
+    """前台首页 — 重定向到登录页"""
 
     def get(self):
-        self.write("<h1>欢迎访问 IOIQ 智能瞭望与智能问数系统</h1>"
-                   "<p><a href='/admin/login'>进入管理后台</a></p>")
+        self.redirect("/login")
 
 
 if __name__ == "__main__":
