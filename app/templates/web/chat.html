@@ -345,6 +345,55 @@
             align-items: center; justify-content: center;
             cursor: pointer;
         }
+
+        /* 数字员工技能标签 */
+        .skill-tag {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 14px;
+            font-size: 12px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+            color: #4a6cf7;
+            border: 1px solid #c7d2fe;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .skill-tag:hover {
+            background: linear-gradient(135deg, #4a6cf7, #6366f1);
+            color: #fff;
+            border-color: #4a6cf7;
+        }
+        /* 技能调用横幅 */
+        .skill-banner {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 16px;
+            margin: 0 auto 12px; max-width: 800px;
+            background: linear-gradient(135deg, #eef2ff, #faf5ff);
+            border: 1px solid #c7d2fe;
+            border-radius: 10px;
+            font-size: 13px; color: #4a6cf7;
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .skill-banner .skill-badge {
+            background: linear-gradient(135deg, #4a6cf7, #6366f1);
+            color: #fff;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .skill-banner .skill-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -423,6 +472,14 @@
                     <div class="quick-action" onclick="sendQuick('统计用户总数量')"><i class="fas fa-chart-pie me-1"></i>数据统计</div>
                     <div class="quick-action" onclick="sendQuick('介绍一下 IOIQ 系统')"><i class="fas fa-info-circle me-1"></i>系统介绍</div>
                 </div>
+                <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                    <span style="font-size:12px;color:#94a3b8;">数字员工：</span>
+                    <span class="skill-tag" onclick="sendQuick('@天气 北京')">@天气</span>
+                    <span class="skill-tag" onclick="sendQuick('@音乐 周杰伦')">@音乐</span>
+                    <span class="skill-tag" onclick="sendQuick('@西师妹 你好呀')">@西师妹</span>
+                    <span class="skill-tag" onclick="sendQuick('@search AI发展趋势')">@search</span>
+                    <span class="skill-tag" onclick="sendQuick('@help')">@help</span>
+                </div>
             </div>
             {% end %}
         </div>
@@ -482,6 +539,14 @@
                     <div class="quick-action" onclick="sendQuick('帮我查询数据库中有哪些表')"><i class="fas fa-database me-1"></i>数据库问数</div>
                     <div class="quick-action" onclick="sendQuick('统计用户总数量')"><i class="fas fa-chart-pie me-1"></i>数据统计</div>
                     <div class="quick-action" onclick="sendQuick('介绍一下 IOIQ 系统')"><i class="fas fa-info-circle me-1"></i>系统介绍</div>
+                </div>
+                <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                    <span style="font-size:12px;color:#94a3b8;">数字员工：</span>
+                    <span class="skill-tag" onclick="sendQuick('@天气 北京')">@天气</span>
+                    <span class="skill-tag" onclick="sendQuick('@音乐 周杰伦')">@音乐</span>
+                    <span class="skill-tag" onclick="sendQuick('@西师妹 你好呀')">@西师妹</span>
+                    <span class="skill-tag" onclick="sendQuick('@search AI发展趋势')">@search</span>
+                    <span class="skill-tag" onclick="sendQuick('@help')">@help</span>
                 </div>
             </div>
         `;
@@ -631,10 +696,29 @@
                                         // 添加到左侧列表
                                         refreshConvList();
                                     }
+                                } else if (data.type === 'skill_start') {
+                                    // 显示数字员工调用横幅
+                                    bubble.innerHTML = `
+                                        <div class="skill-banner">
+                                            <i class="fas fa-circle-notch skill-spinner"></i>
+                                            <span class="skill-badge">@${data.skill}</span>
+                                            <span>${data.content}</span>
+                                        </div>
+                                    `;
                                 } else if (data.type === 'done') {
                                     if (data.conversation_id) {
                                         currentConvId = data.conversation_id;
                                         refreshConvList();
+                                    }
+                                    if (data.skill) {
+                                        // 技能调用结束，追加完成标记
+                                        const doneMark = document.createElement('div');
+                                        doneMark.className = 'skill-banner';
+                                        doneMark.style.background = '#f0fdf4';
+                                        doneMark.style.borderColor = '#86efac';
+                                        doneMark.style.color = '#166534';
+                                        doneMark.innerHTML = `<i class="fas fa-check-circle"></i> <span class="skill-badge" style="background:#22c55e;">@${data.skill}</span> <span>数字员工任务完成</span>`;
+                                        bubble.parentElement.appendChild(doneMark);
                                     }
                                 } else if (data.type === 'error') {
                                     bubble.innerHTML = '<span style="color:#ef4444;">' + data.content + '</span>';

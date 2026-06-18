@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}在线调试 - {{ interface['name'] }}{% end %}
+{% block head %}
+<style>
+    .debug-layout { display: flex; gap: 20px; }
+    .debug-left { width: 380px; flex-shrink: 0; }
+    .debug-right { flex: 1; min-width: 0; }
+    .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 20px; margin-bottom: 16px; }
+    .card h4 { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 14px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 4px; }
+    .form-control { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1.5px solid #e2e8f0; font-size: 13px; }
+    .form-control:focus { border-color: #4a6cf7; outline: none; }
+    textarea.form-control { min-height: 90px; font-family: 'Consolas', monospace; font-size: 12px; }
+    .btn-debug { width: 100%; padding: 11px; border-radius: 8px; border: none; background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-debug:hover { box-shadow: 0 4px 14px rgba(34,197,94,0.3); }
+    .btn-debug:disabled { opacity: 0.5; cursor: not-allowed; }
+    .response-box { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 13px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .response-meta { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+    .meta-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+    .meta-item .badge { padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; }
+    .badge-ok { background: #dcfce7; color: #16a34a; }
+    .badge-err { background: #fee2e2; color: #dc2626; }
+    .loading-spin { text-align: center; padding: 30px; color: #94a3b8; }
+    .loading-spin i { font-size: 28px; animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .key-value-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; }
+    .key-value-row input { flex: 1; }
+    .key-value-row .btn-remove { padding: 6px 10px; border: 1px solid #fecaca; border-radius: 5px; background: #fff; color: #ef4444; cursor: pointer; font-size: 12px; }
+    .btn-add-kv { font-size: 12px; color: #4a6cf7; cursor: pointer; background: none; border: none; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-play me-2" style="color:#22c55e;"></i>在线调试</h2>
+    <p><span class="badge-method badge-{{ interface['method'] }}">{{ interface['method'] }}</span> <code>{{ interface['path'] }}</code></p>
+</div>
+
+<div class="debug-layout">
+    <div class="debug-left">
+        <div class="card">
+            <h4><i class="fas fa-cog me-1"></i>请求配置</h4>
+            <div class="form-group">
+                <label>自定义参数（JSON）</label>
+                <textarea class="form-control" id="customParams" placeholder='{"key": "value"}'>{}</textarea>
+            </div>
+            <div class="form-group">
+                <label>自定义 Headers（JSON）</label>
+                <textarea class="form-control" id="customHeaders" placeholder='{"Authorization": "Bearer ..."}'>{}</textarea>
+            </div>
+            <button class="btn-debug" id="btnDebug" onclick="startDebug()">
+                <i class="fas fa-play me-1"></i>发送请求
+            </button>
+        </div>
+
+        <div class="card">
+            <h4><i class="fas fa-info-circle me-1"></i>接口信息</h4>
+            <div style="font-size:13px;color:#64748b;line-height:1.8;">
+                <div><strong>名称：</strong>{{ interface['name'] }}</div>
+                <div><strong>方法：</strong><span class="badge-method badge-{{ interface['method'] }}">{{ interface['method'] }}</span></div>
+                <div><strong>路径：</strong><code style="font-size:12px;">{{ interface['path'][:50] }}</code></div>
+                <div><strong>认证：</strong>{{ interface['auth_type'] }}</div>
+                <div><strong>描述：</strong>{{ interface['description'] or '无' }}</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h4><i class="fas fa-chart-bar me-1"></i>调用统计</h4>
+            <div style="font-size:13px;color:#64748b;line-height:2;">
+                <div>总调用：<strong>{{ stats['total_calls'] }}</strong> 次</div>
+                <div>成功：<strong style="color:#22c55e;">{{ stats['success_calls'] }}</strong> | 失败：<strong style="color:#ef4444;">{{ stats['fail_calls'] }}</strong></div>
+                <div>成功率：<strong>{{ stats['success_rate'] }}%</strong></div>
+                <div>平均响应：<strong>{{ stats['avg_response_ms'] }}ms</strong></div>
+                <div>最快：<strong>{{ stats['min_response_ms'] }}ms</strong> | 最慢：<strong>{{ stats['max_response_ms'] }}ms</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-right">
+        <div class="card" id="responseCard">
+            <h4><i class="fas fa-reply me-1"></i>响应结果</h4>
+            <div id="responsePlaceholder" style="text-align:center;padding:40px;color:#94a3b8;">
+                <i class="fas fa-arrow-left" style="font-size:32px;"></i>
+                <p style="margin-top:12px;">点击「发送请求」开始调试</p>
+            </div>
+            <div id="responseLoading" class="loading-spin" style="display:none;">
+                <i class="fas fa-circle-notch"></i>
+                <p style="margin-top:8px;">请求中...</p>
+            </div>
+            <div id="responseContent" style="display:none;">
+                <div class="response-meta" id="responseMeta"></div>
+                <div class="response-box" id="responseBody"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let isDebugging = false;
+
+function startDebug() {
+    if (isDebugging) return;
+    let params = {};
+    let headers = {};
+    try { params = JSON.parse(document.getElementById('customParams').value || '{}'); } catch(e) { alert('参数 JSON 格式错误'); return; }
+    try { headers = JSON.parse(document.getElementById('customHeaders').value || '{}'); } catch(e) { alert('Headers JSON 格式错误'); return; }
+
+    isDebugging = true;
+    document.getElementById('btnDebug').disabled = true;
+    document.getElementById('responsePlaceholder').style.display = 'none';
+    document.getElementById('responseLoading').style.display = 'block';
+    document.getElementById('responseContent').style.display = 'none';
+
+    fetch('/admin/api-interface/debug/sse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id: {{ interface['id'] }},
+            params: params,
+            headers: headers,
+        })
+    }).then(resp => {
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        function read() {
+            reader.read().then(r => {
+                if (r.done) { isDebugging = false; document.getElementById('btnDebug').disabled = false; return; }
+                const chunk = decoder.decode(r.value, { stream: true });
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            if (data.type === 'status') {
+                                document.getElementById('responseLoading').style.display = 'block';
+                            } else if (data.type === 'done') {
+                                document.getElementById('responseLoading').style.display = 'none';
+                                document.getElementById('responseContent').style.display = 'block';
+                                const cls = data.success ? 'badge-ok' : 'badge-err';
+                                document.getElementById('responseMeta').innerHTML = `
+                                    <div class="meta-item"><span>状态：</span><span class="badge ${cls}">${data.status_code}</span></div>
+                                    <div class="meta-item"><span>耗时：</span><strong>${data.elapsed_ms}ms</strong></div>
+                                    <div class="meta-item"><span>结果：</span><strong style="color:${data.success?'#16a34a':'#dc2626'}">${data.success ? '成功' : '失败'}</strong></div>
+                                `;
+                                document.getElementById('responseBody').textContent = data.body || '(空响应)';
+                            } else if (data.type === 'error') {
+                                document.getElementById('responseLoading').style.display = 'none';
+                                document.getElementById('responseContent').style.display = 'block';
+                                document.getElementById('responseMeta').innerHTML = `
+                                    <div class="meta-item"><span>状态：</span><span class="badge badge-err">错误</span></div>
+                                    <div class="meta-item"><span>耗时：</span><strong>${data.elapsed_ms}ms</strong></div>
+                                `;
+                                document.getElementById('responseBody').textContent = data.content;
+                            }
+                        } catch(e) {}
+                    }
+                }
+                read();
+            });
+        }
+        read();
+    }).catch(err => {
+        document.getElementById('responseLoading').style.display = 'none';
+        document.getElementById('responseContent').style.display = 'block';
+        document.getElementById('responseBody').textContent = '请求失败: ' + err.message;
+        isDebugging = false;
+        document.getElementById('btnDebug').disabled = false;
+    });
+}
+</script>
+{% end %}

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{% if is_add %}新增技能{% else %}编辑技能{% end %} - 技能管理{% end %}
+{% block head %}
+<style>
+    .form-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 28px; max-width: 850px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
+    .form-control { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #e2e8f0; font-size: 14px; transition: all 0.2s; }
+    .form-control:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.08); outline: none; }
+    textarea.form-control { min-height: 90px; font-size: 13px; font-family: 'Consolas', monospace; }
+    .form-row { display: flex; gap: 16px; }
+    .form-row .form-group { flex: 1; }
+    .btn-submit { padding: 11px 28px; border-radius: 8px; border: none; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(139,92,246,0.3); }
+    .btn-back { padding: 11px 20px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .hint { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    select.form-control { cursor: pointer; }
+    .icon-preview { font-size: 32px; margin-top: 4px; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-tools me-2" style="color:#8b5cf6;"></i>{% if is_add %}新增技能{% else %}编辑技能{% end %}</h2>
+    <p>配置技能名称、分类、Prompt 模板和触发关键词</p>
+</div>
+
+<div class="form-card">
+    <form method="post">
+        <div class="form-row">
+            <div class="form-group">
+                <label>技能名称 *</label>
+                <input type="text" name="name" class="form-control" placeholder="例如：SQL 问数" value="{{ skill['name'] if skill else '' }}" required>
+            </div>
+            <div class="form-group" style="flex:0 0 180px;">
+                <label>分类</label>
+                <input type="text" name="category" class="form-control" list="catList" placeholder="输入或选择分类" value="{{ skill['category'] if skill else '通用' }}">
+                <datalist id="catList">
+                    <option value="问数">
+                    <option value="对话">
+                    <option value="分析">
+                    <option value="搜索">
+                    <option value="音乐">
+                    <option value="天气">
+                    <option value="通用">
+                    {% for c in categories %}
+                    {% if c not in ['问数', '对话', '分析', '搜索', '音乐', '天气', '通用'] %}
+                    <option value="{{ c }}">
+                    {% end %}
+                    {% end %}
+                </datalist>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>技能描述</label>
+            <input type="text" name="description" class="form-control" placeholder="简要描述该技能的功能和用途" value="{{ skill['description'] if skill else '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>图标 (Font Awesome class)</label>
+            <div class="form-row">
+                <input type="text" name="icon" class="form-control" placeholder="例如：fa-database" value="{{ skill['icon'] if skill else 'fa-tools' }}">
+                <span class="icon-preview"><i class="fas {{ skill['icon'] if skill else 'fa-tools' }}"></i></span>
+            </div>
+            <div class="hint">参考 <a href="https://fontawesome.com/icons" target="_blank">Font Awesome</a> 图标名称</div>
+        </div>
+
+        <div class="form-group">
+            <label>触发关键词（JSON 数组）</label>
+            <textarea name="trigger_keywords" class="form-control" placeholder='["查询", "统计", "问数", "数据库"]' style="min-height:60px;">{{ skill['trigger_keywords'] if skill else '[]' }}</textarea>
+            <div class="hint">JSON 数组格式，匹配将自动触发该技能</div>
+        </div>
+
+        <div class="form-group">
+            <label>绑定模型引擎</label>
+            <select name="model_engine_id" class="form-control">
+                <option value="0">使用默认模型</option>
+                {% for m in models %}
+                <option value="{{ m['id'] }}" {% if skill and int(skill['model_engine_id']) == m['id'] %}selected{% end %}>{{ m['name'] }} ({{ m['model_name'] }})</option>
+                {% end %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Prompt 模板</label>
+            <textarea name="prompt_template" class="form-control" placeholder="定义该技能的 System Prompt，支持占位符 {user_input}、{context} 等">{{ skill['prompt_template'] if skill else '' }}</textarea>
+            <div class="hint">可用占位符：{user_input} 用户输入、{context} 上下文信息</div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>状态</label>
+                <select name="status" class="form-control">
+                    <option value="enabled" {% if skill and skill['status'] == 'enabled' %}selected{% end %}>启用</option>
+                    <option value="disabled" {% if skill and skill['status'] == 'disabled' %}selected{% end %}>停用</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>版本号</label>
+                <input type="text" name="version" class="form-control" placeholder="1.0" value="{{ skill['version'] if skill else '1.0' }}">
+                <div class="hint">更新时建议升级版本号</div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:24px;">
+            <button type="submit" class="btn-submit"><i class="fas fa-save me-1"></i>保存</button>
+            <a href="/admin/skills" class="btn-back"><i class="fas fa-arrow-left me-1"></i>返回列表</a>
+            {% if not is_add %}
+            <span style="font-size:12px;color:#94a3b8;align-self:center;"><i class="fas fa-info-circle me-1"></i>保存后将自动热更新缓存</span>
+            {% end %}
+        </div>
+    </form>
+</div>
+{% end %}

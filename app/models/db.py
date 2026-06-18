@@ -171,12 +171,20 @@ def init_db():
 						title TEXT DEFAULT '新对话',
 						model_engine_id INTEGER DEFAULT 0,
 						model_name TEXT DEFAULT '',
+						status TEXT NOT NULL DEFAULT 'active',
+						tags TEXT DEFAULT '',
 						created_at TEXT NOT NULL DEFAULT (datetime('now')),
 						updated_at TEXT NOT NULL DEFAULT (datetime('now')),
 						FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 					)
 			"""
 			)
+		# 兼容旧表：添加 status/tags 列（若已存在则静默忽略）
+		for col_def in [("status", "TEXT NOT NULL DEFAULT 'active'"), ("tags", "TEXT DEFAULT ''")]:
+			try:
+				conn.execute(f"ALTER TABLE conversations ADD COLUMN {col_def[0]} {col_def[1]}")
+			except Exception:
+				pass
 		# 对话消息表
 		conn.execute(
 			"""
@@ -186,8 +194,130 @@ def init_db():
 						role TEXT NOT NULL DEFAULT 'user',
 						content TEXT DEFAULT '',
 						tokens_used INTEGER DEFAULT 0,
+						review_status TEXT NOT NULL DEFAULT 'normal',
 						created_at TEXT NOT NULL DEFAULT (datetime('now')),
 						FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+					)
+			"""
+			)
+		# 兼容旧表：添加 review_status 列（若已存在则静默忽略）
+		for col_def in [("review_status", "TEXT NOT NULL DEFAULT 'normal'")]:
+			try:
+				conn.execute(f"ALTER TABLE chat_messages ADD COLUMN {col_def[0]} {col_def[1]}")
+			except Exception:
+				pass
+		# 接口管理表
+		conn.execute(
+			"""
+				CREATE TABLE IF NOT EXISTS api_interfaces(
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						name TEXT NOT NULL,
+						path TEXT NOT NULL DEFAULT '',
+						method TEXT NOT NULL DEFAULT 'GET',
+						description TEXT DEFAULT '',
+						params TEXT DEFAULT '{}',
+						headers TEXT DEFAULT '{}',
+						auth_type TEXT DEFAULT 'none',
+						status INTEGER DEFAULT 1,
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+					)
+			"""
+			)
+		# 接口调用日志表
+		conn.execute(
+			"""
+				CREATE TABLE IF NOT EXISTS api_call_logs(
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						interface_id INTEGER DEFAULT 0,
+						interface_name TEXT DEFAULT '',
+						method TEXT DEFAULT 'GET',
+						path TEXT DEFAULT '',
+						request_params TEXT DEFAULT '',
+						request_headers TEXT DEFAULT '',
+						response_status INTEGER DEFAULT 0,
+						response_body TEXT DEFAULT '',
+						response_time_ms INTEGER DEFAULT 0,
+						success INTEGER DEFAULT 0,
+						error_message TEXT DEFAULT '',
+						created_at TEXT NOT NULL DEFAULT (datetime('now'))
+					)
+			"""
+			)
+		# 数字员工表
+		conn.execute(
+			"""
+				CREATE TABLE IF NOT EXISTS digital_employees(
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						name TEXT NOT NULL,
+						avatar TEXT DEFAULT '',
+						role_name TEXT DEFAULT '',
+						greeting TEXT DEFAULT '',
+						skills TEXT DEFAULT '[]',
+						model_engine_id INTEGER DEFAULT 0,
+						model_name TEXT DEFAULT '',
+						system_prompt TEXT DEFAULT '',
+						status TEXT NOT NULL DEFAULT 'enabled',
+						version TEXT DEFAULT '1.0',
+						total_calls INTEGER DEFAULT 0,
+						total_tokens INTEGER DEFAULT 0,
+						total_duration_ms INTEGER DEFAULT 0,
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+					)
+			"""
+			)
+		# 数字员工版本表
+		conn.execute(
+			"""
+				CREATE TABLE IF NOT EXISTS employee_versions(
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						employee_id INTEGER NOT NULL,
+						version TEXT NOT NULL DEFAULT '1.0',
+						system_prompt TEXT DEFAULT '',
+						skills TEXT DEFAULT '[]',
+						change_log TEXT DEFAULT '',
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						FOREIGN KEY(employee_id) REFERENCES digital_employees(id) ON DELETE CASCADE
+					)
+			"""
+			)
+		# AI 技能表
+		conn.execute(
+			"""
+				CREATE TABLE IF NOT EXISTS ai_skills(
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						name TEXT NOT NULL,
+						description TEXT DEFAULT '',
+						category TEXT NOT NULL DEFAULT '通用',
+						trigger_keywords TEXT DEFAULT '[]',
+						model_engine_id INTEGER DEFAULT 0,
+						model_name TEXT DEFAULT '',
+						prompt_template TEXT DEFAULT '',
+						status TEXT NOT NULL DEFAULT 'enabled',
+						icon TEXT DEFAULT 'fa-tools',
+						call_count INTEGER DEFAULT 0,
+						version TEXT DEFAULT '1.0',
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+					)
+			"""
+			)
+		# 技能调用日志表
+		conn.execute(
+			"""
+				CREATE TABLE IF NOT EXISTS skill_call_logs(
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						skill_id INTEGER DEFAULT 0,
+						skill_name TEXT DEFAULT '',
+						caller_type TEXT DEFAULT '',
+						caller_id INTEGER DEFAULT 0,
+						caller_name TEXT DEFAULT '',
+						tokens_used INTEGER DEFAULT 0,
+						duration_ms INTEGER DEFAULT 0,
+						success INTEGER DEFAULT 0,
+						error_message TEXT DEFAULT '',
+						created_at TEXT NOT NULL DEFAULT (datetime('now'))
 					)
 			"""
 			)

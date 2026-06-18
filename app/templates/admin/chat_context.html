@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}对话上下文 - 对话管理{% end %}
+{% block head %}
+<style>
+    .info-bar { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    .info-card { flex: 1; min-width: 220px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 16px 20px; }
+    .info-card .label { font-size: 12px; color: #94a3b8; margin-bottom: 2px; }
+    .info-card .value { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-normal { background: #dcfce7; color: #16a34a; }
+    .badge-flagged { background: #fef3c7; color: #d97706; }
+    .badge-blocked { background: #fee2e2; color: #dc2626; }
+    .badge-user { background: #eef2ff; color: #4a6cf7; }
+    .badge-ai { background: #f3e8ff; color: #8b5cf6; }
+    .chat-area { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 24px; max-height: 600px; overflow-y: auto; }
+    .chat-msg { display: flex; margin-bottom: 16px; gap: 12px; }
+    .chat-msg.user { flex-direction: row-reverse; }
+    .chat-msg.highlight { position: relative; }
+    .chat-msg.highlight::before { content: ''; position: absolute; inset: -8px; border-radius: 14px; border: 2px solid #f59e0b; pointer-events: none; z-index: 0; }
+    .msg-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; position: relative; z-index: 1; }
+    .chat-msg.user .msg-avatar { background: #eef2ff; color: #4a6cf7; }
+    .chat-msg.assistant .msg-avatar { background: #f3e8ff; color: #8b5cf6; }
+    .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.6; word-break: break-word; position: relative; z-index: 1; }
+    .chat-msg.user .msg-bubble { background: #eef2ff; color: #1e293b; border-bottom-right-radius: 4px; }
+    .chat-msg.assistant .msg-bubble { background: #f8fafc; color: #334155; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
+    .msg-meta { font-size: 11px; color: #94a3b8; margin-top: 4px; display: flex; gap: 10px; align-items: center; }
+    .btn-sm { padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #475569; text-decoration: none; display: inline-block; white-space: nowrap; transition: all 0.15s; }
+    .btn-sm:hover { background: #f1f5f9; }
+    .btn-sm.primary { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+    .btn-sm.danger { color: #ef4444; border-color: #fecaca; }
+    .btn-sm.warning { color: #d97706; border-color: #fde68a; }
+    .flag-notice { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #c2410c; }
+</style>
+{% end %}
+{% block content %}
+<a href="/admin/chats" class="btn-sm" style="margin-bottom:16px;"><i class="fas fa-arrow-left me-1"></i>返回消息列表</a>
+
+<div class="info-bar">
+    <div class="info-card">
+        <div class="label">消息ID</div>
+        <div class="value">#{{ msg['id'] }}</div>
+    </div>
+    <div class="info-card">
+        <div class="label">会话</div>
+        <div class="value">{{ msg['conv_title'] or '新对话' }}</div>
+    </div>
+    <div class="info-card">
+        <div class="label">用户</div>
+        <div class="value">{{ msg['username'] or '-' }}</div>
+    </div>
+    <div class="info-card">
+        <div class="label">审核状态</div>
+        <div class="value">
+            <span class="badge badge-{{ msg['review_status'] }}">
+                {% if msg['review_status'] == 'flagged' %}已标记{% elif msg['review_status'] == 'blocked' %}已屏蔽{% else %}正常{% end %}
+            </span>
+        </div>
+    </div>
+</div>
+
+{% if msg['review_status'] == 'flagged' %}
+<div class="flag-notice"><i class="fas fa-exclamation-triangle me-2"></i>此消息已被标记为待审核</div>
+{% end %}
+
+<h4 style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:12px;"><i class="fas fa-sitemap me-2" style="color:#8b5cf6;"></i>完整对话上下文</h4>
+
+<div class="chat-area">
+    {% for m in messages %}
+    <div class="chat-msg {{ m['role'] }}{% if m['id'] == highlight_id %} highlight{% end %}">
+        <div class="msg-avatar">
+            {% if m['role'] == 'user' %}<i class="fas fa-user"></i>{% else %}<i class="fas fa-robot"></i>{% end %}
+        </div>
+        <div class="msg-bubble">
+            <div>{{ m['content'] }}</div>
+            <div class="msg-meta">
+                <span class="badge badge-{{ m['role'] }}">{% if m['role'] == 'user' %}用户{% else %}AI{% end %}</span>
+                <span>{{ m['created_at'] }}</span>
+                <span>{{ m['tokens_used'] }} tokens</span>
+                {% if m['review_status'] == 'flagged' %}<span class="badge badge-flagged"><i class="fas fa-flag me-1"></i>标记</span>{% end %}
+            </div>
+        </div>
+    </div>
+    {% end %}
+    {% if not messages %}
+    <div style="text-align:center;padding:60px;color:#94a3b8;">
+        <i class="fas fa-comment-slash" style="font-size:48px;display:block;margin-bottom:12px;"></i>
+        <p>暂无消息记录</p>
+    </div>
+    {% end %}
+</div>
+
+<div style="margin-top:16px;display:flex;gap:8px;">
+    <a href="/admin/session/detail?id={{ msg['conversation_id'] }}" class="btn-sm"><i class="fas fa-external-link-alt me-1"></i>查看会话详情</a>
+</div>
+{% end %}

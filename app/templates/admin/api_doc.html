@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}接口文档 - 接口管理{% end %}
+{% block head %}
+<style>
+    .doc-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 20px; overflow: hidden; }
+    .doc-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; }
+    .doc-header h4 { font-size: 16px; font-weight: 600; color: #1e293b; flex: 1; }
+    .doc-body { padding: 20px; }
+    .doc-section { margin-bottom: 14px; }
+    .doc-section .label { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; text-transform: uppercase; }
+    .doc-section code { background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-size: 13px; }
+    .doc-section pre { background: #f8fafc; padding: 12px 16px; border-radius: 8px; font-size: 13px; overflow-x: auto; margin: 0; }
+    .doc-section table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    .doc-section th { background: #f8fafc; padding: 8px 12px; font-size: 12px; color: #64748b; text-align: left; border: 1px solid #e5e7eb; }
+    .doc-section td { padding: 8px 12px; font-size: 13px; border: 1px solid #e5e7eb; }
+    .badge-method { padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; }
+    .badge-GET { background: #dcfce7; color: #16a34a; }
+    .badge-POST { background: #dbeafe; color: #2563eb; }
+    .badge-PUT { background: #fef3c7; color: #d97706; }
+    .badge-DELETE { background: #fee2e2; color: #dc2626; }
+    .badge-PATCH { background: #f3e8ff; color: #9333ea; }
+    .toolbar { display: flex; gap: 10px; margin-bottom: 16px; }
+    .btn-sm { padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #475569; text-decoration: none; display: inline-block; }
+    .btn-sm:hover { background: #f1f5f9; }
+    .btn-sm.primary { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-book me-2" style="color:#4a6cf7;"></i>接口文档</h2>
+    <p>自动生成的 API 接口文档，共 {{ len(interfaces) }} 个接口</p>
+</div>
+
+<div class="toolbar">
+    <a href="/admin/api-doc/export" class="btn-sm primary"><i class="fas fa-download me-1"></i>导出 Markdown</a>
+    <a href="/admin/api-interfaces" class="btn-sm"><i class="fas fa-list me-1"></i>返回列表</a>
+</div>
+
+{% for api in interfaces %}
+<div class="doc-card" id="api-{{ api['id'] }}">
+    <div class="doc-header">
+        <span class="badge-method badge-{{ api['method'] }}">{{ api['method'] }}</span>
+        <h4>{{ api['name'] }}</h4>
+        <span style="font-size:12px;color:#94a3b8;">{{ api['auth_type'] }}</span>
+    </div>
+    <div class="doc-body">
+        <div class="doc-section">
+            <div class="label">请求路径</div>
+            <code>{{ api['path'] }}</code>
+        </div>
+        {% if api['description'] %}
+        <div class="doc-section">
+            <div class="label">接口描述</div>
+            <p style="font-size:14px;color:#334155;">{{ api['description'] }}</p>
+        </div>
+        {% end %}
+
+        {% set params = api['_params'] %}
+        {% if params %}
+        <div class="doc-section">
+            <div class="label">请求参数</div>
+            <table>
+                <thead><tr><th>参数名</th><th>示例值</th></tr></thead>
+                <tbody>
+                {% for k, v in params.items() %}
+                <tr><td>{{ k }}</td><td><code>{{ v }}</code></td></tr>
+                {% end %}
+                </tbody>
+            </table>
+        </div>
+        {% end %}
+
+        {% set headers = api['_headers'] %}
+        {% if headers %}
+        <div class="doc-section">
+            <div class="label">请求头</div>
+            <table>
+                <thead><tr><th>Header</th><th>Value</th></tr></thead>
+                <tbody>
+                {% for k, v in headers.items() %}
+                <tr><td>{{ k }}</td><td><code>{{ v }}</code></td></tr>
+                {% end %}
+                </tbody>
+            </table>
+        </div>
+        {% end %}
+    </div>
+</div>
+{% end %}
+
+{% if not interfaces %}
+<div style="text-align:center;padding:60px;color:#94a3b8;">
+    <i class="fas fa-inbox" style="font-size:48px;"></i>
+    <p style="margin-top:12px;">暂无接口数据</p>
+</div>
+{% end %}
+{% end %}

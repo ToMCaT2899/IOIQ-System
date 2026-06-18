@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{% if is_add %}新增接口{% else %}编辑接口{% end %} - 接口管理{% end %}
+{% block head %}
+<style>
+    .form-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 28px; max-width: 800px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
+    .form-control { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #e2e8f0; font-size: 14px; transition: all 0.2s; }
+    .form-control:focus { border-color: #4a6cf7; box-shadow: 0 0 0 3px rgba(74,108,247,0.08); outline: none; }
+    textarea.form-control { min-height: 100px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; }
+    .form-row { display: flex; gap: 16px; }
+    .form-row .form-group { flex: 1; }
+    .btn-submit { padding: 11px 28px; border-radius: 8px; border: none; background: linear-gradient(135deg, #4a6cf7, #6366f1); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(74,108,247,0.3); }
+    .btn-back { padding: 11px 20px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .hint { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    select.form-control { cursor: pointer; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-plug me-2" style="color:#4a6cf7;"></i>{% if is_add %}新增接口{% else %}编辑接口{% end %}</h2>
+    <p>配置接口名称、路径、请求方法、参数和认证方式</p>
+</div>
+
+<div class="form-card">
+    <form method="post">
+        <div class="form-row">
+            <div class="form-group">
+                <label>接口名称 *</label>
+                <input type="text" name="name" class="form-control" placeholder="例如：获取用户列表" value="{{ interface['name'] if interface else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label>请求方式</label>
+                <select name="method" class="form-control">
+                    {% for m in ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] %}
+                    <option value="{{ m }}" {% if interface and interface['method'] == m %}selected{% end %}>{{ m }}</option>
+                    {% end %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>请求路径 *</label>
+            <input type="text" name="path" class="form-control" placeholder="例如：https://api.example.com/v1/users" value="{{ interface['path'] if interface else '' }}" required>
+            <div class="hint">支持完整 URL 或相对路径</div>
+        </div>
+
+        <div class="form-group">
+            <label>接口描述</label>
+            <input type="text" name="description" class="form-control" placeholder="简要描述接口功能" value="{{ interface['description'] if interface else '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>请求参数（JSON 格式）</label>
+            <textarea name="params" class="form-control" placeholder='{"key": "value", ...}' style="min-height:80px;">{{ interface['params'] if interface else '{}' }}</textarea>
+            <div class="hint">JSON 对象格式，对应 GET 的 query string 或 POST 的 body</div>
+        </div>
+
+        <div class="form-group">
+            <label>请求头（JSON 格式）</label>
+            <textarea name="headers" class="form-control" placeholder='{"Content-Type": "application/json", ...}' style="min-height:80px;">{{ interface['headers'] if interface else '{}' }}</textarea>
+            <div class="hint">JSON 对象格式，如 Content-Type、Authorization 等</div>
+        </div>
+
+        <div class="form-group">
+            <label>认证方式</label>
+            <select name="auth_type" class="form-control">
+                {% for a in [('none', '无认证'), ('api_key', 'API Key'), ('bearer', 'Bearer Token'), ('basic', 'Basic Auth'), ('oauth2', 'OAuth 2.0')] %}
+                <option value="{{ a[0] }}" {% if interface and interface['auth_type'] == a[0] %}selected{% end %}>{{ a[1] }}</option>
+                {% end %}
+            </select>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:24px;">
+            <button type="submit" class="btn-submit"><i class="fas fa-save me-1"></i>保存</button>
+            <a href="/admin/api-interfaces" class="btn-back"><i class="fas fa-arrow-left me-1"></i>返回列表</a>
+        </div>
+    </form>
+</div>
+{% end %}

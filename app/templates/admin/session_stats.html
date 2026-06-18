@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}会话统计 - 会话管理{% end %}
+{% block head %}
+<style>
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: 14px; padding: 24px; border: 1px solid #e5e7eb; text-align: center; }
+    .stat-card .icon { font-size: 32px; margin-bottom: 8px; }
+    .stat-card .num { font-size: 32px; font-weight: 700; color: #1e293b; }
+    .stat-card .label { font-size: 13px; color: #94a3b8; margin-top: 6px; }
+    .purple .icon { color: #8b5cf6; }
+    .green .icon { color: #22c55e; }
+    .blue .icon { color: #3b82f6; }
+    .orange .icon { color: #f97316; }
+    .gray .icon { color: #64748b; }
+    .info-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 28px; margin-bottom: 20px; }
+    .info-card p { font-size: 14px; color: #64748b; margin: 0; line-height: 1.8; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-chart-pie me-2" style="color:#8b5cf6;"></i>会话统计</h2>
+    <p>系统全局会话数据概览</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card purple">
+        <div class="icon"><i class="fas fa-comments"></i></div>
+        <div class="num">{{ stats['total'] }}</div>
+        <div class="label">总会话数</div>
+    </div>
+    <div class="stat-card green">
+        <div class="icon"><i class="fas fa-circle"></i></div>
+        <div class="num">{{ stats['active'] }}</div>
+        <div class="label">活跃会话</div>
+    </div>
+    <div class="stat-card gray">
+        <div class="icon"><i class="fas fa-archive"></i></div>
+        <div class="num">{{ stats['archived'] }}</div>
+        <div class="label">已归档</div>
+    </div>
+    <div class="stat-card blue">
+        <div class="icon"><i class="fas fa-envelope"></i></div>
+        <div class="num">{{ stats['total_messages'] }}</div>
+        <div class="label">总消息数</div>
+    </div>
+    <div class="stat-card orange">
+        <div class="icon"><i class="fas fa-sync-alt"></i></div>
+        <div class="num">{{ stats['avg_rounds'] }}</div>
+        <div class="label">平均对话轮次</div>
+    </div>
+</div>
+
+<div class="info-card">
+    <p><i class="fas fa-info-circle me-2" style="color:#8b5cf6;"></i>
+        <strong>数据说明：</strong>
+        会话数统计所有前台 AI 问数模块产生的对话记录；活跃会话指状态为"活跃"的会话；归档会话为已标记归档的对话；平均对话轮次 = 总消息数 / 总会话数（含用户和 AI 消息）。
+    </p>
+</div>
+
+<div style="text-align:center;margin-top:20px;">
+    <a href="/admin/sessions" class="btn-sm primary"><i class="fas fa-arrow-left me-1"></i>返回会话列表</a>
+</div>
+{% end %}

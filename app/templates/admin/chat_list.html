@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}对话管理{% end %}
+{% block head %}
+<style>
+    .stats-row { display: flex; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 16px 20px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; flex: 1; min-width: 150px; }
+    .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .stat-icon.purple { background: #f3e8ff; color: #8b5cf6; }
+    .stat-icon.blue { background: #eff6ff; color: #3b82f6; }
+    .stat-icon.green { background: #f0fdf4; color: #22c55e; }
+    .stat-icon.orange { background: #fff7ed; color: #f97316; }
+    .stat-icon.red { background: #fef2f2; color: #ef4444; }
+    .stat-num { font-size: 20px; font-weight: 700; color: #1e293b; }
+    .stat-label { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .filter-bar input, .filter-bar select { padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; }
+    .filter-bar input[type="text"] { width: 200px; }
+    .filter-bar input[type="date"] { width: 135px; }
+    .table-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; }
+    .table-card table { width: 100%; border-collapse: collapse; }
+    .table-card th { background: #f8fafc; padding: 10px 12px; font-size: 12px; color: #64748b; font-weight: 600; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+    .table-card td { padding: 9px 12px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .table-card tr:hover td { background: #fafbfd; }
+    .table-card tr.flagged td { background: #fffbeb; }
+    .table-card tr.blocked td { background: #fef2f2; }
+    .msg-preview { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .badge { padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .badge-user { background: #eef2ff; color: #4a6cf7; }
+    .badge-ai { background: #f3e8ff; color: #8b5cf6; }
+    .badge-normal { background: #dcfce7; color: #16a34a; }
+    .badge-flagged { background: #fef3c7; color: #d97706; }
+    .badge-blocked { background: #fee2e2; color: #dc2626; }
+    .btn-sm { padding: 5px 11px; border-radius: 6px; font-size: 11px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #475569; text-decoration: none; display: inline-block; white-space: nowrap; transition: all 0.15s; }
+    .btn-sm:hover { background: #f1f5f9; }
+    .btn-sm.primary { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+    .btn-sm.danger { color: #ef4444; border-color: #fecaca; }
+    .btn-sm.danger:hover { background: #fef2f2; }
+    .btn-sm.warning { color: #d97706; border-color: #fde68a; }
+    .btn-sm.green { color: #16a34a; border-color: #bbf7d0; }
+    .btn-group { display: flex; gap: 3px; }
+    .empty-state { text-align: center; padding: 60px; color: #94a3b8; }
+    .empty-state i { font-size: 48px; display: block; margin-bottom: 12px; }
+    .conv-link { color: #1e40af; text-decoration: none; }
+    .conv-link:hover { text-decoration: underline; }
+    .select-all-cb { cursor: pointer; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-comments me-2" style="color:#8b5cf6;"></i>对话管理</h2>
+    <p>管理所有对话消息，支持筛选、审核标记、敏感词扫描和导出</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon purple"><i class="fas fa-envelope"></i></div>
+        <div><div class="stat-num">{{ stats['total'] }}</div><div class="stat-label">总消息数</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-user"></i></div>
+        <div><div class="stat-num">{{ stats['user_messages'] }}</div><div class="stat-label">用户消息</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-robot"></i></div>
+        <div><div class="stat-num">{{ stats['ai_messages'] }}</div><div class="stat-label">AI 消息</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-coins"></i></div>
+        <div><div class="stat-num">{{ stats['total_tokens'] }}</div><div class="stat-label">Token 消耗</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="fas fa-flag"></i></div>
+        <div><div class="stat-num">{{ stats['flagged'] }}</div><div class="stat-label">已标记</div></div>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <input type="text" id="keywordInput" placeholder="搜索消息内容..." value="{{ keyword }}" onkeydown="if(event.key==='Enter')search()">
+    <select id="userFilter" onchange="search()">
+        <option value="0" {% if user_id == 0 %}selected{% end %}>全部用户</option>
+        {% for u in users %}
+        <option value="{{ u['id'] }}" {% if user_id == u['id'] %}selected{% end %}>{{ u['username'] }}</option>
+        {% end %}
+    </select>
+    <select id="roleFilter" onchange="search()">
+        <option value="" {% if not role %}selected{% end %}>全部角色</option>
+        <option value="user" {% if role == 'user' %}selected{% end %}>用户</option>
+        <option value="assistant" {% if role == 'assistant' %}selected{% end %}>AI</option>
+    </select>
+    <select id="reviewFilter" onchange="search()">
+        <option value="" {% if not review_status %}selected{% end %}>全部状态</option>
+        <option value="normal" {% if review_status == 'normal' %}selected{% end %}>正常</option>
+        <option value="flagged" {% if review_status == 'flagged' %}selected{% end %}>已标记</option>
+        <option value="blocked" {% if review_status == 'blocked' %}selected{% end %}>已屏蔽</option>
+    </select>
+    <input type="date" id="dateFrom" value="{{ date_from }}" onchange="search()" title="开始日期">
+    <input type="date" id="dateTo" value="{{ date_to }}" onchange="search()" title="结束日期">
+    <button onclick="search()" class="btn-sm primary"><i class="fas fa-search me-1"></i>搜索</button>
+    <button onclick="batchFlag()" class="btn-sm warning" id="batchFlagBtn" disabled title="标记选中"><i class="fas fa-flag me-1"></i>标记</button>
+    <button onclick="batchDelete()" class="btn-sm danger" id="batchDelBtn" disabled title="删除选中"><i class="fas fa-trash me-1"></i>删除</button>
+</div>
+
+<div style="display:flex;gap:8px;margin-bottom:12px;">
+    <a href="/admin/chat/export" class="btn-sm"><i class="fas fa-download me-1"></i>导出全部 (JSON)</a>
+    <form method="post" action="/admin/chat/scan" style="display:inline;">
+        <button type="submit" class="btn-sm warning"><i class="fas fa-shield-alt me-1"></i>敏感词扫描 & 标记</button>
+    </form>
+    <a href="/admin/chat-stats" class="btn-sm"><i class="fas fa-chart-bar me-1"></i>统计</a>
+</div>
+
+<div class="table-card">
+    <table>
+        <thead>
+            <tr>
+                <th style="width:34px;"><input type="checkbox" class="select-all-cb" onclick="toggleAll(this)"></th>
+                <th>ID</th>
+                <th>用户</th>
+                <th>会话</th>
+                <th>角色</th>
+                <th>消息内容</th>
+                <th>Token</th>
+                <th>审核</th>
+                <th>时间</th>
+                <th style="width:130px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in list %}
+            <tr class="{{ m['review_status'] }}">
+                <td><input type="checkbox" class="cb-item" value="{{ m['id'] }}" onchange="updateBatchBtn()"></td>
+                <td style="font-size:12px;color:#94a3b8;">#{{ m['id'] }}</td>
+                <td style="font-weight:500;">{{ m['username'] or '-' }}</td>
+                <td><a href="/admin/session/detail?id={{ m['conversation_id'] }}" class="conv-link">{{ m['conv_title'] or '新对话' }}</a></td>
+                <td>
+                    <span class="badge badge-{{ m['role'] }}">
+                        {% if m['role'] == 'user' %}<i class="fas fa-user me-1"></i>用户{% else %}<i class="fas fa-robot me-1"></i>AI{% end %}
+                    </span>
+                </td>
+                <td><div class="msg-preview">{{ m['content'] }}</div></td>
+                <td style="text-align:center;font-size:12px;">{{ m['tokens_used'] }}</td>
+                <td>
+                    <span class="badge badge-{{ m['review_status'] }}">
+                        {% if m['review_status'] == 'flagged' %}已标记{% elif m['review_status'] == 'blocked' %}已屏蔽{% else %}正常{% end %}
+                    </span>
+                </td>
+                <td style="font-size:12px;color:#94a3b8;white-space:nowrap;">{{ m['created_at'] }}</td>
+                <td>
+                    <div class="btn-group">
+                        <a href="/admin/chat/context?id={{ m['id'] }}" class="btn-sm" title="查看上下文"><i class="fas fa-sitemap"></i></a>
+                        <form method="post" action="/admin/chat/review" style="display:inline;">
+                            <input type="hidden" name="ids" value="{{ m['id'] }}">
+                            {% if m['review_status'] == 'flagged' %}
+                            <input type="hidden" name="review_status" value="normal">
+                            <button type="submit" class="btn-sm green" title="取消标记"><i class="fas fa-check"></i></button>
+                            {% else %}
+                            <input type="hidden" name="review_status" value="flagged">
+                            <button type="submit" class="btn-sm warning" title="标记"><i class="fas fa-flag"></i></button>
+                            {% end %}
+                        </form>
+                        <form method="post" action="/admin/chat/delete" style="display:inline;" onsubmit="return confirm('确定删除该消息吗？')">
+                            <input type="hidden" name="id" value="{{ m['id'] }}">
+                            <button type="submit" class="btn-sm danger" title="删除"><i class="fas fa-trash"></i></button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% end %}
+            {% if not list %}
+            <tr><td colspan="10">
+                <div class="empty-state"><i class="fas fa-comment-slash"></i><p>暂无对话消息</p></div>
+            </td></tr>
+            {% end %}
+        </tbody>
+    </table>
+</div>
+
+{% if total_pages > 1 %}
+<div style="text-align:center;margin-top:20px;">
+    {% set sp = page - 2 %}
+    {% if sp < 1 %}{% set sp = 1 %}{% end %}
+    {% set ep = sp + 4 %}
+    {% if ep > total_pages %}{% set ep = total_pages %}{% set sp = ep - 4 %}{% end %}
+    {% if sp < 1 %}{% set sp = 1 %}{% end %}
+    {% set base_params = '' %}
+    {% if keyword %}{% set base_params = base_params + '&keyword=' + keyword %}{% end %}
+    {% if user_id %}{% set base_params = base_params + '&user_id=' + str(user_id) %}{% end %}
+    {% if role %}{% set base_params = base_params + '&role=' + role %}{% end %}
+    {% if review_status %}{% set base_params = base_params + '&review_status=' + review_status %}{% end %}
+    {% if date_from %}{% set base_params = base_params + '&date_from=' + date_from %}{% end %}
+    {% if date_to %}{% set base_params = base_params + '&date_to=' + date_to %}{% end %}
+    {% if sp > 1 %}
+        <a href="?page=1{{ base_params }}" class="btn-sm">&laquo;</a>
+        <a href="?page={{ page - 1 }}{{ base_params }}" class="btn-sm">&lsaquo;</a>
+    {% end %}
+    {% for p in range(sp, ep + 1) %}
+        <a href="?page={{ p }}{{ base_params }}" class="btn-sm {% if p == page %}primary{% end %}">{{ p }}</a>
+    {% end %}
+    {% if ep < total_pages %}
+        <a href="?page={{ page + 1 }}{{ base_params }}" class="btn-sm">&rsaquo;</a>
+        <a href="?page={{ total_pages }}{{ base_params }}" class="btn-sm">&raquo;</a>
+    {% end %}
+</div>
+{% end %}
+
+<script>
+function search() {
+    const p = [];
+    const kw = document.getElementById('keywordInput').value.trim();
+    const uid = document.getElementById('userFilter').value;
+    const r = document.getElementById('roleFilter').value;
+    const rv = document.getElementById('reviewFilter').value;
+    const df = document.getElementById('dateFrom').value;
+    const dt = document.getElementById('dateTo').value;
+    if (kw) p.push('keyword=' + encodeURIComponent(kw));
+    if (uid && uid !== '0') p.push('user_id=' + uid);
+    if (r) p.push('role=' + r);
+    if (rv) p.push('review_status=' + rv);
+    if (df) p.push('date_from=' + df);
+    if (dt) p.push('date_to=' + dt);
+    location.href = '/admin/chats' + (p.length ? '?' + p.join('&') : '');
+}
+function toggleAll(el) {
+    document.querySelectorAll('.cb-item').forEach(cb => { cb.checked = el.checked; });
+    updateBatchBtn();
+}
+function updateBatchBtn() {
+    const count = document.querySelectorAll('.cb-item:checked').length;
+    document.getElementById('batchDelBtn').disabled = count === 0;
+    document.getElementById('batchFlagBtn').disabled = count === 0;
+}
+function batchDelete() {
+    const ids = Array.from(document.querySelectorAll('.cb-item:checked')).map(cb => cb.value);
+    if (!ids.length) return;
+    if (!confirm('确定删除选中的 ' + ids.length + ' 条消息吗？')) return;
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = '/admin/chat/batch-delete';
+    f.innerHTML = '<input name="ids" value="' + ids.join(',') + '">';
+    document.body.appendChild(f); f.submit();
+}
+function batchFlag() {
+    const ids = Array.from(document.querySelectorAll('.cb-item:checked')).map(cb => cb.value);
+    if (!ids.length) return;
+    if (!confirm('确定标记选中的 ' + ids.length + ' 条消息吗？')) return;
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = '/admin/chat/review';
+    f.innerHTML = '<input name="ids" value="' + ids.join(',') + '"><input name="review_status" value="flagged">';
+    document.body.appendChild(f); f.submit();
+}
+</script>
+{% end %}

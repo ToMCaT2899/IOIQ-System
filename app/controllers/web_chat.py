@@ -26,6 +26,13 @@ def _get_user_id(username: str) -> int:
         return row["id"] if row else 0
 
 
+def _int_arg(handler, key, default=0):
+    try:
+        return int(handler.get_argument(key, str(default)))
+    except (ValueError, TypeError):
+        return default
+
+
 class ChatPageHandler(tornado.web.RequestHandler):
     """AI 问数对话主页面"""
 
@@ -60,10 +67,17 @@ class ChatSSEHandler(tornado.web.RequestHandler):
             return
         user_id = _get_user_id(username)
 
-        body = json.loads(self.request.body or "{}")
-        user_message = body.get("message", "").strip()
-        conversation_id = body.get("conversation_id", 0)
-        model_engine_id = body.get("model_engine_id", 0)
+        # 支持 JSON body 和 form-encoded body
+        content_type = self.request.headers.get("Content-Type", "")
+        if "application/json" in content_type:
+            body = json.loads(self.request.body or "{}")
+            user_message = body.get("message", "").strip()
+            conversation_id = body.get("conversation_id", 0)
+            model_engine_id = body.get("model_engine_id", 0)
+        else:
+            user_message = self.get_body_argument("message", "").strip()
+            conversation_id = _int_arg(self, "conversation_id", 0)
+            model_engine_id = _int_arg(self, "model_engine_id", 0)
 
         if not user_message:
             self.set_status(400)
@@ -104,12 +118,25 @@ class ChatSSEHandler(tornado.web.RequestHandler):
         # 意图识别：检测是否为 SQL 问数请求
         intent = _detect_intent(user_message)
 
+        # @xxx 数字员工调用检测
+        skill_name, skill_args, is_skill = _parse_at_command(user_message)
+
         self.set_header("Content-Type", "text/event-stream")
         self.set_header("Cache-Control", "no-cache")
         self.set_header("Connection", "keep-alive")
         self.set_header("X-Accel-Buffering", "no")
 
         try:
+            # 如果是 @xxx 数字员工调用，先发送通知事件
+            if is_skill:
+                skill_start = json.dumps({
+                    "type": "skill_start",
+                    "skill": skill_name,
+                    "content": f"正在调用数字员工 @{skill_name} ...",
+                }, ensure_ascii=False)
+                self.write(f"data: {skill_start}\n\n")
+                await self.flush()
+
             api_key = model["api_key"] or "YOUR_API_KEY"
             api_base = model["api_base"] or "https://api.openai.com/v1"
             model_name = model["model_name"] or "gpt-3.5-turbo"
@@ -124,8 +151,11 @@ class ChatSSEHandler(tornado.web.RequestHandler):
             # 构建消息列表
             messages = []
 
-            # 系统提示词：意图识别 + SQL 规则
-            if intent == "sql":
+            # 系统提示词：@xxx 数字员工 > SQL > 自定义 > 默认
+            if is_skill:
+                skill_prompt, resolved_name = _get_skill_prompt(skill_name, skill_args)
+                messages.append({"role": "system", "content": skill_prompt})
+            elif intent == "sql":
                 sql_schema = _get_db_schema()
                 sql_prompt = (
                     "你是一个智能问数助手。用户已经请求查询数据库中的数据。\n"
@@ -206,6 +236,7 @@ class ChatSSEHandler(tornado.web.RequestHandler):
                 "tokens": total_tokens,
                 "duration_ms": elapsed,
                 "conversation_id": conversation_id,
+                "skill": skill_name if is_skill else None,
             }, ensure_ascii=False)
             self.write(f"data: {done_data}\n\n")
             await self.flush()
@@ -281,6 +312,75 @@ def _detect_intent(message: str) -> str:
         if kw in message:
             return "sql"
     return "chat"
+
+
+def _parse_at_command(message: str):
+    """
+    解析 @xxx 数字员工调用命令。
+    返回 (skill_name, cleaned_message, is_skill)
+    支持格式：@天气 北京、@音乐 周杰伦、@西师妹 你好、@search Python教程
+    也支持反斜杠格式：反斜杠search Python教程
+    """
+    import re
+
+    # 匹配 @技能名 或 \\技能名
+    match = re.match(r'[@\\]([\u4e00-\u9fa5a-zA-Z0-9]+)\s*(.*)', message)
+    if match:
+        skill_name = match.group(1).lower()
+        skill_args = match.group(2).strip()
+        return skill_name, skill_args, True
+    return None, message, False
+
+
+def _get_skill_prompt(skill_name: str, skill_args: str) -> str:
+    """根据数字员工技能名称，返回对应的系统提示词"""
+    skill_prompts = {
+        "天气": (
+            "你是一个天气查询数字员工。用户询问天气情况。\n"
+            "请根据你的知识回答天气相关问题，包括温度、湿度、风力、穿衣建议等。\n"
+            f"用户查询：{skill_args}\n"
+            "请用友好、专业的语气回答。"
+        ),
+        "音乐": (
+            "你是一个音乐推荐数字员工。用户询问音乐相关的内容。\n"
+            "请根据你的知识推荐歌曲、专辑、歌手，介绍音乐风格、背景等。\n"
+            f"用户需求：{skill_args}\n"
+            "请用热情、有品味的语气回答。"
+        ),
+        "西师妹": (
+            "你是西师妹，一个活泼可爱、幽默风趣的 AI 数字员工。\n"
+            "你喜欢用轻松俏皮的语气和人聊天，偶尔会开个玩笑，但也能认真回答问题。\n"
+            "你擅长 Python 编程、数据分析、AI 技术等话题。\n"
+            f"对方对你说：{skill_args}\n"
+            "请以「西师妹」的身份和风格回复。"
+        ),
+        "search": (
+            "你是一个网络搜索数字员工。用户需要搜索互联网上的信息。\n"
+            "请根据你的知识库尽力提供最新、最相关的信息，并给出参考来源的建议。\n"
+            f"搜索内容：{skill_args}\n"
+            "请用条理清晰的方式组织回复，分点列出关键信息。"
+        ),
+        "help": (
+            "请列出当前可用的数字员工列表：\n"
+            "- @天气 <地点> — 查询天气信息\n"
+            "- @音乐 <歌手/歌曲> — 音乐推荐与介绍\n"
+            "- @西师妹 <内容> — 与西师妹 AI 伙伴聊天\n"
+            "- @search 或反斜杠search <关键词> — 搜索网络信息\n"
+            "用户输入 @help 即可查看此列表。"
+        ),
+    }
+
+    for key, prompt in skill_prompts.items():
+        if key == skill_name or key.lower() == skill_name:
+            return prompt, key
+
+    # 未知技能：给出友好提示
+    unknown_prompt = (
+        f"用户尝试调用名为「{skill_name}」的数字员工，但该技能尚未上线。\n"
+        "请友好地告知用户：该数字员工正在开发中，敬请期待！\n"
+        "并建议用户输入 @help 查看当前可用的数字员工列表。"
+    )
+    return unknown_prompt, skill_name
 
 
 def _get_db_schema() -> str:

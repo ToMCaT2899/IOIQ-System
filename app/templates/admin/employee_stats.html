@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}运营统计 - 数字员工{% end %}
+{% block head %}
+<style>
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 22px; border: 1px solid #e5e7eb; text-align: center; }
+    .stat-card .num { font-size: 30px; font-weight: 700; color: #1e293b; }
+    .stat-card .label { font-size: 13px; color: #94a3b8; margin-top: 6px; }
+    .stat-card .icon { font-size: 26px; margin-bottom: 6px; }
+    .stat-card.purple .icon { color: #8b5cf6; }
+    .stat-card.green .icon { color: #22c55e; }
+    .stat-card.blue .icon { color: #3b82f6; }
+    .stat-card.orange .icon { color: #f97316; }
+    .gauge-bar { height: 8px; border-radius: 4px; background: #e2e8f0; margin-top: 8px; overflow: hidden; }
+    .gauge-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #8b5cf6, #6366f1); }
+    .table-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; margin-top: 20px; }
+    .table-card table { width: 100%; border-collapse: collapse; }
+    .table-card th { background: #f8fafc; padding: 10px 14px; font-size: 12px; color: #64748b; font-weight: 600; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    .table-card td { padding: 10px 14px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; }
+    .table-card tr:hover td { background: #f8fafc; }
+    .badge-status { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-enabled { background: #dcfce7; color: #16a34a; }
+    .badge-disabled { background: #f1f5f9; color: #94a3b8; }
+    .badge-maintenance { background: #fef3c7; color: #d97706; }
+    .filter-bar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; }
+    .filter-bar select { padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; }
+    .btn-sm { padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #475569; text-decoration: none; display: inline-block; }
+    .btn-sm:hover { background: #f1f5f9; }
+    .btn-sm.primary { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+    .version-timeline { margin-top: 20px; }
+    .version-item { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; align-items: flex-start; }
+    .version-dot { width: 12px; height: 12px; border-radius: 50%; background: #8b5cf6; margin-top: 4px; flex-shrink: 0; }
+    .version-content { font-size: 13px; }
+    .version-content .v-head { font-weight: 600; color: #1e293b; }
+    .version-content .v-date { font-size: 11px; color: #94a3b8; margin-left: 8px; }
+    .version-content .v-log { color: #64748b; margin-top: 2px; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-chart-bar me-2" style="color:#8b5cf6;"></i>运营统计</h2>
+    <p>{% if employee %}{{ employee['name'] }} 运营数据{% else %}所有数字员工运营总览{% end %}</p>
+</div>
+
+<div class="filter-bar">
+    <select id="filterEmployee" onchange="filterStats()">
+        <option value="0" {% if not employee %}selected{% end %}>全局统计</option>
+        {% for emp in all_employees %}
+        <option value="{{ emp['id'] }}" {% if employee and employee['id'] == emp['id'] %}selected{% end %}>
+            {{ emp['name'] }} {% if emp['status'] != 'enabled' %}[{{ '维护中' if emp['status'] == 'maintenance' else '已停用' }}]{% end %}
+        </option>
+        {% end %}
+    </select>
+    <a href="/admin/employees" class="btn-sm primary"><i class="fas fa-list me-1"></i>返回列表</a>
+    <a href="/admin/employee/chat{% if employee %}?id={{ employee['id'] }}{% end %}" class="btn-sm"><i class="fas fa-comment-dots me-1"></i>对话测试</a>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card purple">
+        <div class="icon"><i class="fas fa-play-circle"></i></div>
+        <div class="num">{{ stats['total_calls'] }}</div>
+        <div class="label">总调用次数</div>
+    </div>
+    <div class="stat-card green">
+        <div class="icon"><i class="fas fa-coins"></i></div>
+        <div class="num">{{ stats['total_tokens'] }}</div>
+        <div class="label">Token 消耗</div>
+    </div>
+    <div class="stat-card blue">
+        <div class="icon"><i class="fas fa-hourglass-half"></i></div>
+        <div class="num">{{ stats['total_duration_ms'] }}ms</div>
+        <div class="label">总耗时</div>
+    </div>
+    <div class="stat-card orange">
+        <div class="icon"><i class="fas fa-tachometer-alt"></i></div>
+        <div class="num">{{ stats['avg_duration_ms'] }}ms</div>
+        <div class="label">平均响应时间</div>
+    </div>
+</div>
+
+{% if employee %}
+<div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
+    <div class="stat-card">
+        <div class="label" style="margin-bottom:10px;">当前状态</div>
+        <span class="badge-status badge-{{ employee['status'] }}" style="font-size:14px;padding:6px 16px;">
+            {% if employee['status'] == 'enabled' %}已启用{% elif employee['status'] == 'disabled' %}已停用{% else %}维护中{% end %}
+        </span>
+    </div>
+    <div class="stat-card">
+        <div class="label" style="margin-bottom:10px;">当前版本</div>
+        <div class="num" style="font-size:24px;">v{{ employee['version'] }}</div>
+    </div>
+</div>
+{% end %}
+
+{% if employee %}
+<table class="table-card" style="margin-top:0;">
+    <thead><tr><th>绑定模型</th><th>角色定位</th><th>技能数量</th><th>创建时间</th><th>更新时间</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>{{ employee['model_name'] or '默认模型' }}</td>
+            <td>{{ employee['role_name'] or '-' }}</td>
+            <td>
+                {% set skills = employee['_skills'] %}
+                {{ len(skills) }} 项
+            </td>
+            <td>{{ employee['created_at'] }}</td>
+            <td>{{ employee['updated_at'] }}</td>
+        </tr>
+    </tbody>
+</table>
+
+{% if versions %}
+<div class="version-timeline">
+    <h4 style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:12px;"><i class="fas fa-code-branch me-1"></i>版本历史</h4>
+    {% for v in versions %}
+    <div class="version-item">
+        <div class="version-dot"></div>
+        <div class="version-content">
+            <span class="v-head">v{{ v['version'] }}</span>
+            <span class="v-date">{{ v['created_at'] }}</span>
+            <div class="v-log">{{ v['change_log'] or '无变更记录' }}</div>
+        </div>
+    </div>
+    {% end %}
+</div>
+{% end %}
+{% end %}
+
+<script>
+function filterStats() {
+    const id = document.getElementById('filterEmployee').value;
+    location.href = '/admin/employee-stats?id=' + id;
+}
+</script>
+{% end %}

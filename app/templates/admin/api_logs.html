@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}调用日志 - 接口管理{% end %}
+{% block head %}
+<style>
+    .table-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; }
+    .table-card table { width: 100%; border-collapse: collapse; }
+    .table-card th { background: #f8fafc; padding: 10px 14px; font-size: 12px; color: #64748b; font-weight: 600; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+    .table-card td { padding: 10px 14px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; }
+    .table-card tr:hover td { background: #f8fafc; }
+    .badge-success { background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; }
+    .badge-fail { background: #fee2e2; color: #dc2626; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; }
+    .filter-bar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    .filter-bar select { padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; }
+    .btn-sm { padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #475569; text-decoration: none; display: inline-block; }
+    .btn-sm:hover { background: #f1f5f9; }
+    .btn-sm.danger { color: #ef4444; border-color: #fecaca; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-history me-2" style="color:#f59e0b;"></i>调用日志</h2>
+    <p>记录所有接口的调用详情，便于问题追踪和性能监控</p>
+</div>
+
+<div class="filter-bar">
+    <select id="filterInterface" onchange="filterLogs()">
+        <option value="0" {% if filter_interface_id == 0 %}selected{% end %}>全部接口</option>
+        {% for api in interfaces %}
+        <option value="{{ api['id'] }}" {% if filter_interface_id == api['id'] %}selected{% end %}>{{ api['name'] }} ({{ api['method'] }})</option>
+        {% end %}
+    </select>
+    <a href="/admin/api-interfaces" class="btn-sm"><i class="fas fa-arrow-left me-1"></i>返回列表</a>
+    <form method="post" action="/admin/api-clear-logs" style="display:inline;">
+        <input type="hidden" name="interface_id" value="{{ filter_interface_id }}">
+        <button type="submit" class="btn-sm danger" onclick="return confirm('确定清空日志吗？')"><i class="fas fa-trash me-1"></i>清空日志</button>
+    </form>
+</div>
+
+<div class="table-card">
+    <table>
+        <thead>
+            <tr>
+                <th>时间</th>
+                <th>接口名称</th>
+                <th>方法</th>
+                <th>路径</th>
+                <th>状态码</th>
+                <th>响应时间</th>
+                <th>结果</th>
+                <th>错误</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in list %}
+            <tr>
+                <td style="white-space:nowrap;font-size:12px;color:#94a3b8;">{{ log['created_at'] }}</td>
+                <td>{{ log['interface_name'] }}</td>
+                <td><span class="badge-method badge-{{ log['method'] }}">{{ log['method'] }}</span></td>
+                <td><code style="font-size:11px;color:#4a6cf7;">{{ log['path'][:60] }}</code></td>
+                <td>{{ log['response_status'] if log['response_status'] else '-' }}</td>
+                <td>{{ log['response_time_ms'] }}ms</td>
+                <td>{% if log['success'] %}<span class="badge-success"><i class="fas fa-check"></i> 成功</span>{% else %}<span class="badge-fail"><i class="fas fa-times"></i> 失败</span>{% end %}</td>
+                <td style="font-size:12px;color:#ef4444;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ log['error_message'] }}">{{ log['error_message'][:40] if log['error_message'] else '-' }}</td>
+            </tr>
+            {% end %}
+            {% if not list %}
+            <tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8;">暂无调用日志</td></tr>
+            {% end %}
+        </tbody>
+    </table>
+</div>
+
+{% if total_pages > 1 %}
+<div style="text-align:center;margin-top:20px;">
+    {% set start_p = page - 2 %}
+    {% if start_p < 1 %}{% set start_p = 1 %}{% end %}
+    {% set end_p = start_p + 4 %}
+    {% if end_p > total_pages %}{% set end_p = total_pages %}{% set start_p = end_p - 4 %}{% end %}
+    {% if start_p < 1 %}{% set start_p = 1 %}{% end %}
+    {% if start_p > 1 %}
+        <a href="?page=1&interface_id={{ filter_interface_id }}" class="btn-sm">«</a>
+        <a href="?page={{ page - 1 }}&interface_id={{ filter_interface_id }}" class="btn-sm">‹</a>
+    {% end %}
+    {% for p in range(start_p, end_p + 1) %}
+        <a href="?page={{ p }}&interface_id={{ filter_interface_id }}" class="btn-sm {% if p == page %}primary{% end %}">{{ p }}</a>
+    {% end %}
+    {% if end_p < total_pages %}
+        <a href="?page={{ page + 1 }}&interface_id={{ filter_interface_id }}" class="btn-sm">›</a>
+        <a href="?page={{ total_pages }}&interface_id={{ filter_interface_id }}" class="btn-sm">»</a>
+    {% end %}
+</div>
+{% end %}
+
+<script>
+function filterLogs() {
+    const iid = document.getElementById('filterInterface').value;
+    location.href = '/admin/api-logs?interface_id=' + iid;
+}
+</script>
+{% end %}

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}技能管理{% end %}
+{% block head %}
+<style>
+    .stats-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat-card {
+        flex: 1; min-width: 150px; background: #fff; border-radius: 12px;
+        padding: 18px 20px; border: 1px solid #e5e7eb;
+        display: flex; align-items: center; gap: 14px;
+    }
+    .stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .stat-icon.blue { background: #eff6ff; color: #3b82f6; }
+    .stat-icon.green { background: #f0fdf4; color: #22c55e; }
+    .stat-icon.orange { background: #fff7ed; color: #f97316; }
+    .stat-icon.purple { background: #f3e8ff; color: #8b5cf6; }
+    .stat-num { font-size: 22px; font-weight: 700; color: #1e293b; }
+    .stat-label { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .toolbar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    .search-box { flex: 1; min-width: 180px; max-width: 340px; position: relative; }
+    .search-box input { width: 100%; padding: 9px 14px 9px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; }
+    .search-box i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; }
+    .filter-select { padding: 9px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: #fff; cursor: pointer; }
+    .skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .skill-card {
+        background: #fff; border-radius: 14px; border: 1px solid #e5e7eb; overflow: hidden;
+        transition: all 0.2s;
+    }
+    .skill-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.06); transform: translateY(-2px); border-color: #c7d2fe; }
+    .card-header {
+        padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+        border-bottom: 1px solid #f1f5f9;
+        background: linear-gradient(135deg, #fafbfd, #f8fafc);
+    }
+    .card-icon {
+        width: 44px; height: 44px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; color: #fff; flex-shrink: 0;
+    }
+    .card-icon.cat-问数 { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+    .card-icon.cat-对话 { background: linear-gradient(135deg, #8b5cf6, #6366f1); }
+    .card-icon.cat-分析 { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+    .card-icon.cat-搜索 { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
+    .card-icon.cat-通用 { background: linear-gradient(135deg, #64748b, #94a3b8); }
+    .card-icon.cat-音乐 { background: linear-gradient(135deg, #ec4899, #f43f5e); }
+    .card-icon.cat-天气 { background: linear-gradient(135deg, #06b6d4, #22c55e); }
+    .card-info { flex: 1; min-width: 0; }
+    .card-info h4 { font-size: 15px; font-weight: 600; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px; }
+    .card-info .desc { font-size: 12px; color: #94a3b8; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card-body { padding: 14px 20px; }
+    .card-meta { display: flex; gap: 14px; font-size: 12px; color: #94a3b8; flex-wrap: wrap; margin-bottom: 8px; }
+    .card-meta span { display: flex; align-items: center; gap: 4px; }
+    .keyword-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+    .keyword-tag { padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #eef2ff; color: #4a6cf7; }
+    .card-footer {
+        padding: 10px 20px; border-top: 1px solid #f1f5f9;
+        display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;
+    }
+    .badge-status { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .badge-enabled { background: #dcfce7; color: #16a34a; }
+    .badge-disabled { background: #f1f5f9; color: #94a3b8; }
+    .badge-cat { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+    .badge-cat-问数 { background: #eff6ff; color: #3b82f6; }
+    .badge-cat-对话 { background: #f3e8ff; color: #8b5cf6; }
+    .badge-cat-分析 { background: #fff7ed; color: #f97316; }
+    .badge-cat-搜索 { background: #ecfeff; color: #0891b2; }
+    .badge-cat-通用 { background: #f1f5f9; color: #64748b; }
+    .badge-cat-音乐 { background: #fdf2f8; color: #db2777; }
+    .badge-cat-天气 { background: #f0fdf4; color: #16a34a; }
+    .btn-sm { padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #475569; text-decoration: none; display: inline-block; transition: all 0.15s; white-space: nowrap; }
+    .btn-sm:hover { background: #f1f5f9; }
+    .btn-sm.primary { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+    .btn-sm.primary:hover { background: #3b5de7; }
+    .btn-sm.danger { color: #ef4444; border-color: #fecaca; }
+    .btn-sm.danger:hover { background: #fef2f2; }
+    .btn-sm.success { color: #16a34a; border-color: #bbf7d0; }
+    .btn-sm.success:hover { background: #f0fdf4; }
+    .btn-sm.warning { color: #d97706; border-color: #fde68a; }
+    .btn-sm.warning:hover { background: #fffbeb; }
+    .btn-sm.purple { color: #8b5cf6; border-color: #ddd6fe; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-tools me-2" style="color:#8b5cf6;"></i>技能管理</h2>
+    <p>AI 技能的统一管理和配置，支持分类、Prompt 模板、热更新和市场扩展</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon purple"><i class="fas fa-puzzle-piece"></i></div>
+        <div><div class="stat-num">{{ stats['total'] }}</div><div class="stat-label">技能总数</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div><div class="stat-num">{{ stats['enabled'] }}</div><div class="stat-label">已启用</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-pause-circle"></i></div>
+        <div><div class="stat-num">{{ stats['disabled'] }}</div><div class="stat-label">已停用</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-play-circle"></i></div>
+        <div><div class="stat-num">{{ stats['total_calls'] }}</div><div class="stat-label">总调用次数</div></div>
+    </div>
+</div>
+
+<div class="toolbar">
+    <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="keywordInput" placeholder="搜索技能名称或描述..." value="{{ keyword }}" onkeydown="if(event.key==='Enter')search()">
+    </div>
+    <select class="filter-select" id="categoryFilter" onchange="filterCat()">
+        <option value="">全部分类</option>
+        {% for c in categories %}
+        <option value="{{ c }}" {% if category == c %}selected{% end %}>{{ c }}</option>
+        {% end %}
+    </select>
+    <a href="/admin/skill/add" class="btn-sm primary"><i class="fas fa-plus me-1"></i>新增技能</a>
+    <a href="/admin/skill-stats" class="btn-sm"><i class="fas fa-chart-bar me-1"></i>调用统计</a>
+    <a href="/admin/skill-market" class="btn-sm purple"><i class="fas fa-store me-1"></i>技能市场</a>
+    <form method="post" action="/admin/skill-refresh" style="display:inline;">
+        <button type="submit" class="btn-sm success" title="热更新缓存"><i class="fas fa-sync-alt me-1"></i>热更新</button>
+    </form>
+</div>
+
+<div class="skill-grid">
+    {% for item in list %}
+    {% set kw = item['_keywords'] %}
+    <div class="skill-card">
+        <div class="card-header">
+            <div class="card-icon cat-{{ item['category'] }}">
+                <i class="fas {{ item['icon'] or 'fa-tools' }}"></i>
+            </div>
+            <div class="card-info">
+                <h4>
+                    {{ item['name'] }}
+                    <span class="badge-cat badge-cat-{{ item['category'] }}">{{ item['category'] }}</span>
+                </h4>
+                <div class="desc">{{ item['description'] or '暂无描述' }}</div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="card-meta">
+                <span><i class="fas fa-microchip"></i> {{ item['model_name'] or '默认' }}</span>
+                <span><i class="fas fa-code-branch"></i> v{{ item['version'] }}</span>
+                <span><i class="fas fa-phone"></i> {{ item['call_count'] }}次</span>
+                <span class="badge-status badge-{{ item['status'] }}">{% if item['status'] == 'enabled' %}启用{% else %}停用{% end %}</span>
+            </div>
+            {% if len(kw) > 0 %}
+            <div class="keyword-tags">
+                {% for k in kw[:8] %}
+                <span class="keyword-tag">#{{ k }}</span>
+                {% end %}
+                {% if len(kw) > 8 %}<span class="keyword-tag">+{{ len(kw) - 8 }}</span>{% end %}
+            </div>
+            {% end %}
+        </div>
+        <div class="card-footer">
+            {% if item['status'] == 'enabled' %}
+            <a href="#" onclick="toggleSkill({{ item['id'] }}, 'disabled')" class="btn-sm warning" title="停用"><i class="fas fa-pause"></i></a>
+            {% else %}
+            <a href="#" onclick="toggleSkill({{ item['id'] }}, 'enabled')" class="btn-sm success" title="启用"><i class="fas fa-play"></i></a>
+            {% end %}
+            <a href="/admin/skill-stats?id={{ item['id'] }}" class="btn-sm" title="统计"><i class="fas fa-chart-line"></i></a>
+            <a href="/admin/skill/edit?id={{ item['id'] }}" class="btn-sm" title="编辑"><i class="fas fa-edit"></i></a>
+            <a href="#" onclick="deleteSkill({{ item['id'] }})" class="btn-sm danger" title="删除"><i class="fas fa-trash"></i></a>
+        </div>
+    </div>
+    {% end %}
+    {% if not list %}
+    <div style="grid-column:1/-1;text-align:center;padding:60px;color:#94a3b8;">
+        <i class="fas fa-puzzle-piece" style="font-size:48px;"></i>
+        <p style="margin-top:12px;">暂无技能，点击「新增技能」开始创建</p>
+    </div>
+    {% end %}
+</div>
+
+{% if total_pages > 1 %}
+<div style="text-align:center;margin-top:24px;">
+    {% set start_p = page - 2 %}
+    {% if start_p < 1 %}{% set start_p = 1 %}{% end %}
+    {% set end_p = start_p + 4 %}
+    {% if end_p > total_pages %}{% set end_p = total_pages %}{% set start_p = end_p - 4 %}{% end %}
+    {% if start_p < 1 %}{% set start_p = 1 %}{% end %}
+    {% if start_p > 1 %}
+        <a href="?page=1{% if keyword %}&keyword={{ keyword }}{% end %}{% if category %}&category={{ category }}{% end %}" class="btn-sm">Â«</a>
+        <a href="?page={{ page - 1 }}{% if keyword %}&keyword={{ keyword }}{% end %}{% if category %}&category={{ category }}{% end %}" class="btn-sm">â€¹</a>
+    {% end %}
+    {% for p in range(start_p, end_p + 1) %}
+        <a href="?page={{ p }}{% if keyword %}&keyword={{ keyword }}{% end %}{% if category %}&category={{ category }}{% end %}" class="btn-sm {% if p == page %}primary{% end %}">{{ p }}</a>
+    {% end %}
+    {% if end_p < total_pages %}
+        <a href="?page={{ page + 1 }}{% if keyword %}&keyword={{ keyword }}{% end %}{% if category %}&category={{ category }}{% end %}" class="btn-sm">â€º</a>
+        <a href="?page={{ total_pages }}{% if keyword %}&keyword={{ keyword }}{% end %}{% if category %}&category={{ category }}{% end %}" class="btn-sm">Â»</a>
+    {% end %}
+</div>
+{% end %}
+
+<script>
+function search() {
+    const kw = document.getElementById('keywordInput').value;
+    location.href = '/admin/skills?keyword=' + encodeURIComponent(kw) + '&category=' + encodeURIComponent(document.getElementById('categoryFilter').value);
+}
+function filterCat() {
+    search();
+}
+function toggleSkill(id, status) {
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = '/admin/skill/toggle';
+    f.innerHTML = '<input name="id" value="'+id+'"><input name="status" value="'+status+'">';
+    document.body.appendChild(f); f.submit();
+}
+function deleteSkill(id) {
+    if (!confirm('确定删除该技能吗？')) return;
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = '/admin/skill/delete';
+    f.innerHTML = '<input name="id" value="'+id+'">';
+    document.body.appendChild(f); f.submit();
+}
+</script>
+{% end %}

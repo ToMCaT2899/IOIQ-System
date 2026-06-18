@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}{% if is_add %}新增数字员工{% else %}编辑数字员工{% end %} - 数字员工{% end %}
+{% block head %}
+<style>
+    .form-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 28px; max-width: 850px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
+    .form-control { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #e2e8f0; font-size: 14px; transition: all 0.2s; }
+    .form-control:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.08); outline: none; }
+    textarea.form-control { min-height: 90px; font-size: 13px; }
+    .form-row { display: flex; gap: 16px; }
+    .form-row .form-group { flex: 1; }
+    .btn-submit { padding: 11px 28px; border-radius: 8px; border: none; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(139,92,246,0.3); }
+    .btn-back { padding: 11px 20px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .hint { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    select.form-control { cursor: pointer; }
+    .version-section { margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+    .version-section h4 { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 6px; }
+    .version-list { margin-top: 12px; }
+    .version-item { padding: 10px 14px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+    .version-item .v-num { font-weight: 600; color: #8b5cf6; }
+    .version-item .v-date { font-size: 12px; color: #94a3b8; }
+    .version-item .v-log { font-size: 12px; color: #64748b; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-robot me-2" style="color:#8b5cf6;"></i>{% if is_add %}新增数字员工{% else %}编辑数字员工{% end %}</h2>
+    <p>配置数字员工的基本信息、技能绑定和角色定位</p>
+</div>
+
+<div class="form-card">
+    <form method="post">
+        <div class="form-row">
+            <div class="form-group">
+                <label>员工名称 *</label>
+                <input type="text" name="name" class="form-control" placeholder="例如：西师妹" value="{{ employee['name'] if employee else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label>角色定位</label>
+                <input type="text" name="role_name" class="form-control" placeholder="例如：AI 智能助理" value="{{ employee['role_name'] if employee else '' }}">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex:0 0 120px;">
+                <label>头像（emoji）</label>
+                <input type="text" name="avatar" class="form-control" placeholder="ðŸ¤-" maxlength="4" value="{{ employee['avatar'] if employee else '' }}">
+                <div class="hint">可选，1-2个 emoji 字符</div>
+            </div>
+            <div class="form-group">
+                <label>欢迎语</label>
+                <input type="text" name="greeting" class="form-control" placeholder="例如：你好！我是西师妹，很高兴为你服务~" value="{{ employee['greeting'] if employee else '' }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>技能列表（JSON 数组）</label>
+            <textarea name="skills" class="form-control" placeholder='["天气查询", "音乐推荐", "SQL问数"]' style="min-height:60px;">{{ employee['skills'] if employee else '[]' }}</textarea>
+            <div class="hint">JSON 数组格式，关联技能管理模块中已配置的技能</div>
+        </div>
+
+        <div class="form-group">
+            <label>绑定模型引擎</label>
+            <select name="model_engine_id" class="form-control">
+                <option value="0">使用默认模型</option>
+                {% for m in models %}
+                <option value="{{ m['id'] }}" {% if employee and int(employee['model_engine_id']) == m['id'] %}selected{% end %}>{{ m['name'] }} ({{ m['model_name'] }})</option>
+                {% end %}
+            </select>
+            <div class="hint">选择该员工使用的 AI 模型引擎</div>
+        </div>
+
+        <div class="form-group">
+            <label>系统提示词</label>
+            <textarea name="system_prompt" class="form-control" placeholder="定义数字员工的角色、性格、回答风格等">{{ employee['system_prompt'] if employee else '' }}</textarea>
+            <div class="hint">系统的行为指令，例如：你是西师妹，一个活泼可爱的AI助手...</div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>状态</label>
+                <select name="status" class="form-control">
+                    {% for s in [('enabled', '已启用'), ('disabled', '已停用'), ('maintenance', '维护中')] %}
+                    <option value="{{ s[0] }}" {% if employee and employee['status'] == s[0] %}selected{% end %}>{{ s[1] }}</option>
+                    {% end %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>当前版本</label>
+                <input type="text" class="form-control" value="{{ employee['version'] if employee else '1.0' }}" readonly disabled>
+            </div>
+        </div>
+
+        {% if not is_add %}
+        <div class="version-section">
+            <h4><i class="fas fa-code-branch me-1"></i>版本升级</h4>
+            <p style="font-size:13px;color:#94a3b8;">填写新版本号和变更日志，保存后将自动创建版本记录</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="text" name="new_version" class="form-control" placeholder="新版本号，如 1.1">
+                </div>
+                <div class="form-group">
+                    <input type="text" name="change_log" class="form-control" placeholder="变更说明">
+                </div>
+            </div>
+        </div>
+
+        {% if versions %}
+        <div class="version-list">
+            <h5 style="font-size:13px;color:#64748b;margin-bottom:8px;">历史版本</h5>
+            {% for v in versions %}
+            <div class="version-item">
+                <span class="v-num">v{{ v['version'] }}</span>
+                <span class="v-log">{{ v['change_log'] or '无记录' }}</span>
+                <span class="v-date">{{ v['created_at'] }}</span>
+            </div>
+            {% end %}
+        </div>
+        {% end %}
+        {% end %}
+
+        <div style="display:flex;gap:12px;margin-top:28px;">
+            <button type="submit" class="btn-submit"><i class="fas fa-save me-1"></i>保存</button>
+            <a href="/admin/employees" class="btn-back"><i class="fas fa-arrow-left me-1"></i>返回列表</a>
+        </div>
+    </form>
+</div>
+{% end %}

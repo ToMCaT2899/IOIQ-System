@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ session['title'] or '新对话' }} - 会话详情{% end %}
+{% block head %}
+<style>
+    .detail-header { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 20px; }
+    .detail-meta { flex: 1; min-width: 200px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 20px 24px; }
+    .detail-meta h3 { font-size: 18px; font-weight: 600; color: #1e293b; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+    .meta-row { display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; color: #64748b; margin-bottom: 6px; }
+    .meta-row span { display: flex; align-items: center; gap: 4px; }
+    .meta-label { color: #94a3b8; font-weight: 500; }
+    .badge-status { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .badge-active { background: #dcfce7; color: #16a34a; }
+    .badge-archived { background: #f1f5f9; color: #94a3b8; }
+    .action-bar { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+    .btn-sm { padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #475569; text-decoration: none; display: inline-block; white-space: nowrap; transition: all 0.15s; }
+    .btn-sm:hover { background: #f1f5f9; }
+    .btn-sm.primary { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+    .btn-sm.danger { color: #ef4444; border-color: #fecaca; }
+    .btn-sm.danger:hover { background: #fef2f2; }
+    .btn-sm.purple { color: #8b5cf6; border-color: #ddd6fe; }
+    .btn-sm.warning { color: #d97706; border-color: #fde68a; }
+    .btn-sm.green { color: #16a34a; border-color: #bbf7d0; }
+    .chat-area { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 24px; max-height: 600px; overflow-y: auto; }
+    .chat-msg { display: flex; margin-bottom: 16px; gap: 12px; }
+    .chat-msg.user { flex-direction: row-reverse; }
+    .msg-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .chat-msg.user .msg-avatar { background: #eef2ff; color: #4a6cf7; }
+    .chat-msg.assistant .msg-avatar { background: #f3e8ff; color: #8b5cf6; }
+    .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.6; word-break: break-word; }
+    .chat-msg.user .msg-bubble { background: #eef2ff; color: #1e293b; border-bottom-right-radius: 4px; }
+    .chat-msg.assistant .msg-bubble { background: #f8fafc; color: #334155; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
+    .msg-meta { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+    .inline-form { display: inline-flex; gap: 6px; align-items: center; }
+    .inline-input { padding: 5px 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; }
+    .inline-input:focus { border-color: #8b5cf6; outline: none; }
+    .empty-chat { text-align: center; padding: 60px; color: #94a3b8; }
+    .empty-chat i { font-size: 48px; display: block; margin-bottom: 12px; }
+    .msg-bubble pre { background: #1e293b; color: #e2e8f0; padding: 10px; border-radius: 8px; font-size: 12px; overflow-x: auto; margin: 8px 0; }
+    .msg-bubble code { font-size: 12px; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+    .msg-bubble pre code { background: none; padding: 0; }
+</style>
+{% end %}
+{% block content %}
+<a href="/admin/sessions" class="btn-sm" style="margin-bottom:16px;"><i class="fas fa-arrow-left me-1"></i>返回会话列表</a>
+
+<div class="detail-header">
+    <div class="detail-meta">
+        <h3>
+            {{ session['title'] or '新对话' }}
+            <span class="badge-status badge-{{ session['status'] }}">{% if session['status'] == 'archived' %}<i class="fas fa-archive me-1"></i>已归档{% else %}<i class="fas fa-circle me-1" style="font-size:6px;"></i>活跃{% end %}</span>
+        </h3>
+        <div class="meta-row">
+            <span><span class="meta-label">会话ID:</span> #{{ session['id'] }}</span>
+            <span><span class="meta-label">用户:</span> {{ session['username'] or '-' }}</span>
+            <span><span class="meta-label">模型:</span> {{ session['model_name'] or '默认' }}</span>
+            <span><span class="meta-label">消息数:</span> {{ session['message_count'] }}</span>
+        </div>
+        <div class="meta-row" style="margin-top:8px;">
+            <span><span class="meta-label">创建:</span> {{ session['created_at'] }}</span>
+            <span><span class="meta-label">更新:</span> {{ session['updated_at'] }}</span>
+        </div>
+        <div class="meta-row" style="margin-top:8px;align-items:center;">
+            <form method="post" action="/admin/session/edit-title" class="inline-form">
+                <input type="hidden" name="id" value="{{ session['id'] }}">
+                <span class="meta-label">标题:</span>
+                <input type="text" name="title" value="{{ session['title'] or '' }}" class="inline-input" style="width:200px;">
+                <button type="submit" class="btn-sm"><i class="fas fa-save"></i></button>
+            </form>
+            <form method="post" action="/admin/session/edit-tags" class="inline-form">
+                <input type="hidden" name="id" value="{{ session['id'] }}">
+                <span class="meta-label">标记:</span>
+                <input type="text" name="tags" value="{{ session['tags'] or '' }}" class="inline-input" style="width:160px;" placeholder="逗号分隔">
+                <button type="submit" class="btn-sm"><i class="fas fa-save"></i></button>
+            </form>
+        </div>
+        <div class="action-bar">
+            <a href="/admin/session/export?id={{ session['id'] }}&format=json" class="btn-sm purple"><i class="fas fa-file-code me-1"></i>导出JSON</a>
+            <a href="/admin/session/export?id={{ session['id'] }}&format=pdf" class="btn-sm"><i class="fas fa-file-pdf me-1"></i>导出文本</a>
+            {% if session['status'] == 'active' %}
+            <form method="post" action="/admin/session/archive" style="display:inline;">
+                <input type="hidden" name="id" value="{{ session['id'] }}">
+                <button type="submit" class="btn-sm warning"><i class="fas fa-archive me-1"></i>归档</button>
+            </form>
+            {% else %}
+            <form method="post" action="/admin/session/archive" style="display:inline;">
+                <input type="hidden" name="id" value="{{ session['id'] }}">
+                <input type="hidden" name="action" value="unarchive">
+                <button type="submit" class="btn-sm green"><i class="fas fa-undo me-1"></i>取消归档</button>
+            </form>
+            {% end %}
+            <form method="post" action="/admin/session/delete" style="display:inline;" onsubmit="return confirm('确定删除该会话吗？')">
+                <input type="hidden" name="id" value="{{ session['id'] }}">
+                <button type="submit" class="btn-sm danger"><i class="fas fa-trash me-1"></i>删除</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<h4 style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:12px;"><i class="fas fa-comment-dots me-2" style="color:#8b5cf6;"></i>对话记录</h4>
+
+<div class="chat-area">
+    {% for m in messages %}
+    <div class="chat-msg {{ m['role'] }}">
+        <div class="msg-avatar">
+            {% if m['role'] == 'user' %}<i class="fas fa-user"></i>{% else %}<i class="fas fa-robot"></i>{% end %}
+        </div>
+        <div class="msg-bubble">
+            <div>{{ m['content'] }}</div>
+            <div class="msg-meta">
+                {% if m['role'] == 'user' %}用户{% else %}AI{% end %} &middot; {{ m['created_at'] }}
+                {% if m['tokens_used'] %}&middot; {{ m['tokens_used'] }} tokens{% end %}
+            </div>
+        </div>
+    </div>
+    {% end %}
+    {% if not messages %}
+    <div class="empty-chat"><i class="fas fa-comment-slash"></i><p>该会话暂无消息记录</p></div>
+    {% end %}
+</div>
+{% end %}

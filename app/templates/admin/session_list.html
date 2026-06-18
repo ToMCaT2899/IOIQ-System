@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}会话管理{% end %}
+{% block head %}
+<style>
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 18px 20px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 14px; }
+    .stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .stat-icon.purple { background: #f3e8ff; color: #8b5cf6; }
+    .stat-icon.green { background: #f0fdf4; color: #22c55e; }
+    .stat-icon.blue { background: #eff6ff; color: #3b82f6; }
+    .stat-icon.orange { background: #fff7ed; color: #f97316; }
+    .stat-icon.gray { background: #f1f5f9; color: #64748b; }
+    .stat-num { font-size: 22px; font-weight: 700; color: #1e293b; }
+    .stat-label { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .filter-bar input, .filter-bar select { padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; }
+    .filter-bar input { width: 200px; }
+    .filter-bar input[type="date"] { width: 140px; }
+    .table-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; }
+    .table-card table { width: 100%; border-collapse: collapse; }
+    .table-card th { background: #f8fafc; padding: 10px 14px; font-size: 12px; color: #64748b; font-weight: 600; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+    .table-card td { padding: 10px 14px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .table-card tr:hover td { background: #fafbfd; }
+    .table-card tr.archived td { background: #f8fafc; color: #94a3b8; }
+    .badge-status { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .badge-active { background: #dcfce7; color: #16a34a; }
+    .badge-archived { background: #f1f5f9; color: #94a3b8; }
+    .badge-tag { padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #eef2ff; color: #4a6cf7; margin-right: 4px; }
+    .tag-input { padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; width: 120px; }
+    .tag-input:focus { border-color: #8b5cf6; outline: none; }
+    .btn-sm { padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #475569; text-decoration: none; display: inline-block; white-space: nowrap; transition: all 0.15s; }
+    .btn-sm:hover { background: #f1f5f9; }
+    .btn-sm.primary { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+    .btn-sm.primary:hover { background: #3b5de7; }
+    .btn-sm.danger { color: #ef4444; border-color: #fecaca; }
+    .btn-sm.danger:hover { background: #fef2f2; }
+    .btn-sm.warning { color: #d97706; border-color: #fde68a; }
+    .btn-sm.purple { color: #8b5cf6; border-color: #ddd6fe; }
+    .btn-sm.green { color: #16a34a; border-color: #bbf7d0; }
+    .btn-group { display: flex; gap: 4px; }
+    .select-all-cb { margin-right: 6px; cursor: pointer; }
+    .title-link { color: #1e40af; text-decoration: none; font-weight: 500; }
+    .title-link:hover { text-decoration: underline; }
+    .empty-state { text-align: center; padding: 60px; color: #94a3b8; }
+    .empty-state i { font-size: 48px; display: block; margin-bottom: 12px; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-history me-2" style="color:#8b5cf6;"></i>会话管理</h2>
+    <p>管理所有用户的对话会话，支持筛选、标记、归档和导出</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon purple"><i class="fas fa-comments"></i></div>
+        <div><div class="stat-num">{{ stats['total'] }}</div><div class="stat-label">总会话数</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-circle"></i></div>
+        <div><div class="stat-num">{{ stats['active'] }}</div><div class="stat-label">活跃会话</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon gray"><i class="fas fa-archive"></i></div>
+        <div><div class="stat-num">{{ stats['archived'] }}</div><div class="stat-label">已归档</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-envelope"></i></div>
+        <div><div class="stat-num">{{ stats['total_messages'] }}</div><div class="stat-label">总消息数</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-sync-alt"></i></div>
+        <div><div class="stat-num">{{ stats['avg_rounds'] }}</div><div class="stat-label">平均轮次</div></div>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <input type="text" id="keywordInput" placeholder="搜索标题或用户名..." value="{{ keyword }}" onkeydown="if(event.key==='Enter')search()">
+    <select id="userFilter" onchange="search()">
+        <option value="0" {% if user_id == 0 %}selected{% end %}>全部用户</option>
+        {% for u in users %}
+        <option value="{{ u['id'] }}" {% if user_id == u['id'] %}selected{% end %}>{{ u['username'] }}</option>
+        {% end %}
+    </select>
+    <select id="statusFilter" onchange="search()">
+        <option value="" {% if status == '' %}selected{% end %}>全部状态</option>
+        <option value="active" {% if status == 'active' %}selected{% end %}>活跃</option>
+        <option value="archived" {% if status == 'archived' %}selected{% end %}>已归档</option>
+    </select>
+    <input type="date" id="dateFrom" value="{{ date_from }}" onchange="search()" title="开始日期">
+    <input type="date" id="dateTo" value="{{ date_to }}" onchange="search()" title="结束日期">
+    <button onclick="search()" class="btn-sm primary"><i class="fas fa-search me-1"></i>搜索</button>
+    <button onclick="batchDelete()" class="btn-sm danger" id="batchDelBtn" disabled title="批量删除选中"><i class="fas fa-trash me-1"></i>批量删除</button>
+</div>
+
+<div class="table-card">
+    <table>
+        <thead>
+            <tr>
+                <th style="width:36px;"><input type="checkbox" class="select-all-cb" onclick="toggleAll(this)" title="全选"></th>
+                <th>ID</th>
+                <th>用户</th>
+                <th>会话标题</th>
+                <th>模型</th>
+                <th>消息数</th>
+                <th>状态</th>
+                <th>标记</th>
+                <th>创建时间</th>
+                <th>更新时间</th>
+                <th style="width:180px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in list %}
+            <tr class="{% if s['status'] == 'archived' %}archived{% end %}">
+                <td><input type="checkbox" class="cb-item" value="{{ s['id'] }}" onchange="updateBatchBtn()"></td>
+                <td style="font-size:12px;color:#94a3b8;">#{{ s['id'] }}</td>
+                <td style="font-weight:500;">{{ s['username'] or '-' }}</td>
+                <td><a href="/admin/session/detail?id={{ s['id'] }}" class="title-link">{{ s['title'] or '新对话' }}</a></td>
+                <td style="font-size:12px;color:#64748b;">{{ s['model_name'] or '默认' }}</td>
+                <td style="text-align:center;">{{ s['message_count'] }}</td>
+                <td>
+                    <span class="badge-status badge-{{ s['status'] }}">
+                        {% if s['status'] == 'archived' %}<i class="fas fa-archive me-1"></i>已归档{% else %}<i class="fas fa-circle me-1" style="font-size:7px;"></i>活跃{% end %}
+                    </span>
+                </td>
+                <td>
+                    {% set tag_list = s['tags'].split(',') if s['tags'] else [] %}
+                    {% for t in tag_list %}
+                    {% if t.strip() %}<span class="badge-tag">{{ t.strip() }}</span>{% end %}
+                    {% end %}
+                </td>
+                <td style="font-size:12px;color:#94a3b8;white-space:nowrap;">{{ s['created_at'] }}</td>
+                <td style="font-size:12px;color:#94a3b8;white-space:nowrap;">{{ s['updated_at'] }}</td>
+                <td>
+                    <div class="btn-group">
+                        <a href="/admin/session/detail?id={{ s['id'] }}" class="btn-sm" title="查看详情"><i class="fas fa-eye"></i></a>
+                        <a href="/admin/session/export?id={{ s['id'] }}&format=json" class="btn-sm purple" title="导出JSON"><i class="fas fa-download"></i></a>
+                        {% if s['status'] == 'active' %}
+                        <form method="post" action="/admin/session/archive" style="display:inline;">
+                            <input type="hidden" name="id" value="{{ s['id'] }}">
+                            <input type="hidden" name="action" value="archive">
+                            <button type="submit" class="btn-sm warning" title="归档"><i class="fas fa-archive"></i></button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="/admin/session/archive" style="display:inline;">
+                            <input type="hidden" name="id" value="{{ s['id'] }}">
+                            <input type="hidden" name="action" value="unarchive">
+                            <button type="submit" class="btn-sm green" title="取消归档"><i class="fas fa-undo"></i></button>
+                        </form>
+                        {% end %}
+                        <form method="post" action="/admin/session/delete" style="display:inline;" onsubmit="return confirm('确定删除该会话吗？')">
+                            <input type="hidden" name="id" value="{{ s['id'] }}">
+                            <button type="submit" class="btn-sm danger" title="删除"><i class="fas fa-trash"></i></button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% end %}
+            {% if not list %}
+            <tr><td colspan="11">
+                <div class="empty-state"><i class="fas fa-inbox"></i><p>暂无会话记录</p></div>
+            </td></tr>
+            {% end %}
+        </tbody>
+    </table>
+</div>
+
+{% if total_pages > 1 %}
+<div style="text-align:center;margin-top:20px;">
+    {% set sp = page - 2 %}
+    {% if sp < 1 %}{% set sp = 1 %}{% end %}
+    {% set ep = sp + 4 %}
+    {% if ep > total_pages %}{% set ep = total_pages %}{% set sp = ep - 4 %}{% end %}
+    {% if sp < 1 %}{% set sp = 1 %}{% end %}
+    {% if sp > 1 %}
+        <a href="?page=1{{ '&keyword='+keyword if keyword else '' }}{{ '&user_id='+str(user_id) if user_id else '' }}{{ '&status='+status if status else '' }}{{ '&date_from='+date_from if date_from else '' }}{{ '&date_to='+date_to if date_to else '' }}" class="btn-sm">&laquo;</a>
+        <a href="?page={{ page - 1 }}{{ '&keyword='+keyword if keyword else '' }}{{ '&user_id='+str(user_id) if user_id else '' }}{{ '&status='+status if status else '' }}{{ '&date_from='+date_from if date_from else '' }}{{ '&date_to='+date_to if date_to else '' }}" class="btn-sm">&lsaquo;</a>
+    {% end %}
+    {% for p in range(sp, ep + 1) %}
+        <a href="?page={{ p }}{{ '&keyword='+keyword if keyword else '' }}{{ '&user_id='+str(user_id) if user_id else '' }}{{ '&status='+status if status else '' }}{{ '&date_from='+date_from if date_from else '' }}{{ '&date_to='+date_to if date_to else '' }}" class="btn-sm {% if p == page %}primary{% end %}">{{ p }}</a>
+    {% end %}
+    {% if ep < total_pages %}
+        <a href="?page={{ page + 1 }}{{ '&keyword='+keyword if keyword else '' }}{{ '&user_id='+str(user_id) if user_id else '' }}{{ '&status='+status if status else '' }}{{ '&date_from='+date_from if date_from else '' }}{{ '&date_to='+date_to if date_to else '' }}" class="btn-sm">&rsaquo;</a>
+        <a href="?page={{ total_pages }}{{ '&keyword='+keyword if keyword else '' }}{{ '&user_id='+str(user_id) if user_id else '' }}{{ '&status='+status if status else '' }}{{ '&date_from='+date_from if date_from else '' }}{{ '&date_to='+date_to if date_to else '' }}" class="btn-sm">&raquo;</a>
+    {% end %}
+</div>
+{% end %}
+
+<script>
+function search() {
+    const params = [];
+    const kw = document.getElementById('keywordInput').value.trim();
+    const uid = document.getElementById('userFilter').value;
+    const st = document.getElementById('statusFilter').value;
+    const df = document.getElementById('dateFrom').value;
+    const dt = document.getElementById('dateTo').value;
+    if (kw) params.push('keyword=' + encodeURIComponent(kw));
+    if (uid && uid !== '0') params.push('user_id=' + uid);
+    if (st) params.push('status=' + st);
+    if (df) params.push('date_from=' + df);
+    if (dt) params.push('date_to=' + dt);
+    location.href = '/admin/sessions' + (params.length ? '?' + params.join('&') : '');
+}
+function toggleAll(el) {
+    document.querySelectorAll('.cb-item').forEach(cb => { cb.checked = el.checked; });
+    updateBatchBtn();
+}
+function updateBatchBtn() {
+    const count = document.querySelectorAll('.cb-item:checked').length;
+    document.getElementById('batchDelBtn').disabled = count === 0;
+}
+function batchDelete() {
+    const ids = Array.from(document.querySelectorAll('.cb-item:checked')).map(cb => cb.value);
+    if (!ids.length) return;
+    if (!confirm('确定删除选中的 ' + ids.length + ' 个会话吗？此操作不可撤销。')) return;
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = '/admin/session/batch-delete';
+    f.innerHTML = '<input name="ids" value="' + ids.join(',') + '">';
+    document.body.appendChild(f); f.submit();
+}
+</script>
+{% end %}

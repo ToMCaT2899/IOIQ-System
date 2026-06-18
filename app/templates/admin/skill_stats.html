@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}调用统计 - 技能管理{% end %}
+{% block head %}
+<style>
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 22px; border: 1px solid #e5e7eb; text-align: center; }
+    .stat-card .num { font-size: 30px; font-weight: 700; color: #1e293b; }
+    .stat-card .label { font-size: 13px; color: #94a3b8; margin-top: 6px; }
+    .stat-card .icon { font-size: 26px; margin-bottom: 6px; }
+    .stat-card.purple .icon { color: #8b5cf6; }
+    .stat-card.green .icon { color: #22c55e; }
+    .stat-card.blue .icon { color: #3b82f6; }
+    .stat-card.orange .icon { color: #f97316; }
+    .filter-bar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; }
+    .filter-bar select { padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; }
+    .btn-sm { padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #475569; text-decoration: none; display: inline-block; }
+    .btn-sm:hover { background: #f1f5f9; }
+    .btn-sm.primary { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+    .table-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; }
+    .table-card table { width: 100%; border-collapse: collapse; }
+    .table-card th { background: #f8fafc; padding: 10px 14px; font-size: 12px; color: #64748b; font-weight: 600; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+    .table-card td { padding: 10px 14px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; }
+    .table-card tr:hover td { background: #f8fafc; }
+    .badge-success { background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; }
+    .badge-fail { background: #fee2e2; color: #dc2626; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; }
+</style>
+{% end %}
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-chart-bar me-2" style="color:#8b5cf6;"></i>调用统计</h2>
+    <p>{% if skill %}「{{ skill['name'] }}」调用日志{% else %}所有技能调用总览{% end %}</p>
+</div>
+
+<div class="filter-bar">
+    <select id="filterSkill" onchange="filterStats()">
+        <option value="0" {% if not skill %}selected{% end %}>全部技能</option>
+        {% for s in all_skills %}
+        <option value="{{ s['id'] }}" {% if skill and skill['id'] == s['id'] %}selected{% end %}>{{ s['name'] }} ({{ s['category'] }})</option>
+        {% end %}
+    </select>
+    <a href="/admin/skills" class="btn-sm primary"><i class="fas fa-list me-1"></i>返回列表</a>
+</div>
+
+{% if skill %}
+<div class="stats-grid">
+    <div class="stat-card purple">
+        <div class="icon"><i class="fas fa-puzzle-piece"></i></div>
+        <div class="num">{{ skill['call_count'] }}</div>
+        <div class="label">总调用次数</div>
+    </div>
+    <div class="stat-card green">
+        <div class="icon"><i class="fas fa-check-circle"></i></div>
+        <div class="num">{% if skill['status'] == 'enabled' %}启用{% else %}停用{% end %}</div>
+        <div class="label">当前状态</div>
+    </div>
+    <div class="stat-card blue">
+        <div class="icon"><i class="fas fa-code-branch"></i></div>
+        <div class="num">v{{ skill['version'] }}</div>
+        <div class="label">当前版本</div>
+    </div>
+    <div class="stat-card orange">
+        <div class="icon"><i class="fas fa-microchip"></i></div>
+        <div class="num">{{ skill['model_name'] or '默认' }}</div>
+        <div class="label">绑定模型</div>
+    </div>
+</div>
+{% end %}
+
+<table class="table-card">
+    <thead>
+        <tr>
+            <th>时间</th>
+            <th>技能</th>
+            <th>调用方类型</th>
+            <th>调用方</th>
+            <th>Token</th>
+            <th>耗时(ms)</th>
+            <th>结果</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr>
+            <td style="white-space:nowrap;font-size:12px;color:#94a3b8;">{{ log['created_at'] }}</td>
+            <td>{{ log['skill_name'] }}</td>
+            <td>{{ log['caller_type'] or '-' }}</td>
+            <td>{{ log['caller_name'] or '-' }}</td>
+            <td>{{ log['tokens_used'] }}</td>
+            <td>{{ log['duration_ms'] }}</td>
+            <td>{% if log['success'] %}<span class="badge-success"><i class="fas fa-check"></i> 成功</span>{% else %}<span class="badge-fail"><i class="fas fa-times"></i> 失败</span>{% end %}</td>
+        </tr>
+        {% end %}
+        {% if not logs %}
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">暂无调用日志</td></tr>
+        {% end %}
+    </tbody>
+</table>
+
+<script>
+function filterStats() {
+    location.href = '/admin/skill-stats?id=' + document.getElementById('filterSkill').value;
+}
+</script>
+{% end %}
