@@ -273,14 +273,33 @@ def _sqlite_type(col):
 
 def _mysql_type(col):
     """将列定义转换为 MySQL 兼容（仅处理关键差异）"""
-    # 替换自增语法
-    col = col.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "INTEGER PRIMARY KEY AUTO_INCREMENT")
-    # 替换 default datetime
+    import re
+    # 1: datetime 替换（必须在 TEXT→VARCHAR 之前，否则匹配失败）
     col = col.replace("TEXT NOT NULL DEFAULT (datetime('now'))", "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
     col = col.replace("TEXT NOT NULL DEFAULT (datetime('now')", "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
     col = col.replace("DEFAULT (datetime('now'))", "DEFAULT CURRENT_TIMESTAMP")
-    # 替换 TEXT 为 VARCHAR 用于更小字段（MySQL TEXT 不能有 default）
-    # 保持 TEXT 用于 content/snippet 等大字段
+    # 2: 自增语法替换
+    col = col.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "INTEGER PRIMARY KEY AUTO_INCREMENT")
+    # 3: TEXT 上有 UNIQUE 约束 → VARCHAR(255)（MySQL BLOB/TEXT 不能作为索引键）
+    col = re.sub(r'\bTEXT\b(\s+NOT\s+NULL)?\s+UNIQUE\b',
+                 r'VARCHAR(255)\1 UNIQUE', col)
+    # 4: salt 字段 → VARBINARY (存储二进制 token_bytes)
+    col = re.sub(r'\b(salt|password_hash)\b\s+TEXT(\s+NOT\s+NULL)',
+                 r'\1 VARBINARY(128)\2', col)
+    # 5: TEXT 在 MySQL strict mode 下不能有 DEFAULT 值
+    #    先统一转 VARCHAR(500)，再对特定大字段改回无 DEFAULT 的大类型
+    col = re.sub(r"\bTEXT\b(\s+NOT\s+NULL)?(\s+DEFAULT\s+'[^']*')",
+                 r"VARCHAR(500)\1\2", col)
+    #    大字段恢复为大类型（去掉 DEFAULT 子句）
+    col = re.sub(r"\bfull_content\b\s+VARCHAR\(\d+\)(\s+NOT\s+NULL)?\s+DEFAULT\s+'[^']*'",
+                 r"full_content LONGTEXT\1", col)
+    col = re.sub(r"\b(raw_html|snippet|response_body|prompt_template|system_prompt|content)\b"
+                 r"\s+VARCHAR\(\d+\)(\s+NOT\s+NULL)?\s+DEFAULT\s+'[^']*'",
+                 r"\1 MEDIUMTEXT\2", col)
+    col = re.sub(r"\b(skills|trigger_keywords|request_params|request_headers|"
+                 r"source_urls|keywords|entities)\b"
+                 r"\s+VARCHAR\(\d+\)(\s+NOT\s+NULL)?\s+DEFAULT\s+'[^']*'",
+                 r"\1 TEXT\2", col)
     return col
 
 
@@ -414,7 +433,7 @@ def _init_tables(conn_execute):
         # 系统设置表
         """CREATE TABLE IF NOT EXISTS system_settings(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            key TEXT NOT NULL UNIQUE,
+            `key` TEXT NOT NULL UNIQUE,
             value TEXT DEFAULT '',
             category TEXT DEFAULT 'general',
             label TEXT DEFAULT '',

@@ -15,6 +15,15 @@
 from app.models.db import get_engine, get_db_config, set_db_config, get_connection, _default_config
 
 
+def _row_to_dict(r):
+    """将 sqlite3.Row 或 _MySQLRow 转为普通 dict"""
+    if hasattr(r, '_data'):
+        return r._data.copy()
+    elif hasattr(r, 'keys'):
+        return {k: r[k] for k in r.keys()}
+    return dict(r)
+
+
 def _get_all_tables(conn):
     """获取当前数据库所有用户表名"""
     engine = get_engine()
@@ -22,9 +31,10 @@ def _get_all_tables(conn):
         rows = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
         ).fetchall()
+        tables = [r[0] for r in rows]
     else:
         rows = conn.execute("SHOW TABLES").fetchall()
-    tables = [list(r.values())[0] for r in rows]
+        tables = [list(_row_to_dict(r).values())[0] for r in rows]
     return [t for t in tables if t not in ("sqlite_sequence",)]
 
 
@@ -33,10 +43,9 @@ def _get_table_columns(conn, table_name: str):
     engine = get_engine()
     if engine == "sqlite":
         rows = conn.execute(f"PRAGMA table_info('{table_name}')").fetchall()
-        return [dict(r) for r in rows]
     else:
         rows = conn.execute(f"DESCRIBE `{table_name}`").fetchall()
-        return [dict(r) for r in rows]
+    return [_row_to_dict(r) for r in rows]
 
 
 def _get_column_names(conn, table_name: str):
@@ -105,10 +114,9 @@ def migrate_data(progress_callback=None) -> dict:
             cols = _get_column_names(source_conn, table)
             # 用 * 读取（避免列名转义问题）
             rows = source_conn.execute(f"SELECT * FROM \"{table}\"" if source_engine == "sqlite" else f"SELECT * FROM `{table}`").fetchall()
-            all_data[table] = {"columns": cols, "rows": [dict(r) if hasattr(r, '_data') else dict(zip(cols, r)) for r in rows]}
-            # 对于 sqlite3.Row, 直接用 dict(r)
-            if all_data[table]["rows"] and not isinstance(all_data[table]["rows"][0], dict):
-                all_data[table]["rows"] = [dict(r) for r in rows]
+            # 读取数据行并转为普通 dict
+            row_dicts = [_row_to_dict(r) for r in rows]
+            all_data[table] = {"columns": cols, "rows": row_dicts}
         source_conn.close()
 
         emit("switch", f"切换到目标引擎 {target_engine}...", 30)
@@ -123,16 +131,27 @@ def migrate_data(progress_callback=None) -> dict:
         from app.models.db import init_db
         init_db()
 
+        # 获取目标库中实际存在的表（init_db 可能遗漏动态创建的表）
+        with get_connection() as tconn:
+            target_tables = set(_get_all_tables(tconn))
+
         # 4. 写入数据
         total_tables = len(tables)
         total_rows = 0
         migrated_tables = 0
+        skipped_tables = 0
 
         with get_connection() as target_conn:
             for idx, table in enumerate(tables):
                 table_data = all_data[table]
                 cols = table_data["columns"]
                 rows = table_data["rows"]
+
+                if table not in target_tables:
+                    skipped_tables += 1
+                    pct = 40 + int((idx + 1) / max(total_tables, 1) * 50)
+                    emit("copy", f"表 {table}: 跳过（目标库无此表）", pct)
+                    continue
 
                 if not rows:
                     migrated_tables += 1
