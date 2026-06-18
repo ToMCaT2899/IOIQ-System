@@ -24,7 +24,7 @@ class WatchCollectPageHandler(tornado.web.RequestHandler):
     def get(self):
         if not _require_login(self):
             return
-        self.render("admin/watch_collect.html", current_page="watch")
+        self.render("admin/watch_collect.html", current_page="watch_collect")
 
 
 class WatchCollectSourcesHandler(tornado.web.RequestHandler):

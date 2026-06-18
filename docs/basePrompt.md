@@ -151,15 +151,16 @@ IOIQ-System/
 | 4 | 权限管理 | `/admin/roles` | `roles` | fa-user-shield |
 | 5 | 模型引擎 | `/admin/models` | `models` | fa-microchip |
 | 6 | 瞭望管理 | `/admin/watch-sources` | `watch` | fa-eye |
-| 7 | 数据仓库 | `/admin/data-warehouse` | `warehouse` | fa-database |
-| 8 | 深度采集 | `/admin/deep-collect` | `deep` | fa-microscope |
-| 9 | 接口管理 | `#` | `api` | fa-plug |
-| 10 | 数字员工 | `#` | `employee` | fa-robot |
-| 11 | 技能管理 | `#` | `skills` | fa-tools |
-| 12 | 会话管理 | `#` | `sessions` | fa-history |
-| 13 | 对话管理 | `#` | `chats` | fa-comments |
-| 14 | 数智大屏 | `#` | `dashboard_screen` | fa-chart-bar |
-| 15 | 系统设置 | `#` | `system` | fa-cog |
+| 7 | 瞭望采集 | `/admin/watch-collect` | `watch_collect` | fa-satellite-dish |
+| 8 | 数据仓库 | `/admin/data-warehouse` | `warehouse` | fa-database |
+| 9 | 深度采集 | `/admin/deep-collect` | `deep` | fa-microscope |
+| 10 | 接口管理 | `#` | `api` | fa-plug |
+| 11 | 数字员工 | `#` | `employee` | fa-robot |
+| 12 | 技能管理 | `#` | `skills` | fa-tools |
+| 13 | 会话管理 | `#` | `sessions` | fa-history |
+| 14 | 对话管理 | `#` | `chats` | fa-comments |
+| 15 | 数智大屏 | `#` | `dashboard_screen` | fa-chart-bar |
+| 16 | 系统设置 | `#` | `system` | fa-cog |
 
 - **Controller（控制层）** — `app/controllers/`
   - `admin_auth.py`：后台认证控制器（登录/登出/主页）
